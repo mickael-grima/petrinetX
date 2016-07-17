@@ -4,6 +4,8 @@ Created on Sat Jul 16 17:55:32 2016
 
 @author: Mickael Grima
 """
+import sys
+from Node import Node, TimeNode
 
 
 class Transition(Node):
@@ -220,93 +222,96 @@ class Transition(Node):
             self.tokenQueueAfterFire[i].setdefault(tkns, {})
 
         if self.tokenQueueAfterFire[i][tkns].get(transition) is not None:
-            if(len(self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue']) < j):
+            if len(self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue']) < j:
                 raise ValueError(
                     "token queue after fire of transition %s for transition %s has a length %s,"
                     "we can't add a token to the place %s"
                     % (self.name, transition.name, str(len(self.tokenQueueAfterFire[i][transition])), str(i))
                 )
-            
-            if(isinstance(tokenNames, list) or isinstance(tokenNames, dict) or isinstance(tokenNames, tuple)):
-            if(j == -1 or len(self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue']) == j):
-                self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue'].append([])
-                for tokenName in tokenNames:
-                try:
-                    self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue'][-1].append(str(tokenName))
-                except:
-                    print "TokeNames argument contains elements that can't be convert into a string"
-            else:
-                if(new_dct_tkn):
-                self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue'].insert(j, [])
-                for tokenName in tokenNames:
-                try:
-                    self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue'][j].append(str(tokenName))
-                except:
-                    print "TokeNames argument contains elements that can't be convert into a string"
-            else:
-            if(j == -1 or len(self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue']) == j):
-                self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue'].append([])
-                try:
-                self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue'][-1].append(str(tokenNames))
-                except:
-                print "TokeNames argument can't be convert into a string"
-            else:
-                if(new_dct_tkn):
-                self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue'].insert(j, [])
-                try:
-                self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue'][j].append(str(tokenNames))
-                except:
-                print "TokeNames argument can't be convert into a string"
-        else:
-            self.tokenQueueAfterFire[i][tkns].setdefault(transition, {'tokenQueue' : [[]], 'place_presence': place_presence, 'nb_tok': nb_tok})
-            if(isinstance(tokenNames, list) or isinstance(tokenNames, dict) or isinstance(tokenNames, tuple)):
-            for tokenName in tokenNames:
-                try:
-                self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue'][-1].append(str(tokenName))
-                except:
-                print "TokeNames argument contains elements that can't be convert into a string"
-            else:
-            try:
-                self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue'][-1].append(str(tokenNames))
-            except:
-                print "TokeNames argument can't be convert into a string"
 
+            if isinstance(tokenNames, list) or isinstance(tokenNames, dict) or isinstance(tokenNames, tuple):
+                if j == -1 or len(self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue']) == j:
+                    self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue'].append([])
+                    for tokenName in tokenNames:
+                        try:
+                            self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue'][-1].append(str(tokenName))
+                        except:
+                            print "TokeNames argument contains elements that can't be convert into a string"
+                else:
+                    if new_dct_tkn:
+                        self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue'].insert(j, [])
+                    for tokenName in tokenNames:
+                        try:
+                            self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue'][j].append(str(tokenName))
+                        except:
+                            print "TokeNames argument contains elements that can't be convert into a string"
+            else:
+                if j == -1 or len(self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue']) == j:
+                    self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue'].append([])
+                    try:
+                        self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue'][-1].append(str(tokenNames))
+                    except:
+                        print "TokeNames argument can't be convert into a string"
+                else:
+                    if new_dct_tkn:
+                        self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue'].insert(j, [])
+                    try:
+                        self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue'][j].append(str(tokenNames))
+                    except:
+                        print "TokeNames argument can't be convert into a string"
+        else:
+            self.tokenQueueAfterFire[i][tkns].setdefault(
+                transition,
+                {'tokenQueue': [[]], 'place_presence': place_presence, 'nb_tok': nb_tok}
+            )
+            if(isinstance(tokenNames, list) or isinstance(tokenNames, dict) or isinstance(tokenNames, tuple)):
+                for tokenName in tokenNames:
+                    try:
+                        self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue'][-1].append(str(tokenName))
+                    except:
+                        print "TokeNames argument contains elements that can't be convert into a string"
+            else:
+                try:
+                    self.tokenQueueAfterFire[i][tkns][transition]['tokenQueue'][-1].append(str(tokenNames))
+                except:
+                    print "TokeNames argument can't be convert into a string"
 
 
 class TimeTransition(Transition, TimeNode):
-    """This class represents a Transition with time in the class :class:`TimedPetriNet <petrinet_simulator.TimedPetriNet>`
-    It herits form both classes :class:`TimeNode <petrinet_simulator.TimeNode>` and :class:`Transition <petrinet_simulator.Transition>`
-    
-    This kind of transition has time's attribute
-    """
-    def __init__(self, name = '', time = 0.0, minimumStartingTime = -sys.maxint-1, show = True):
-    Transition.__init__(self, name = name, show = show)
-    TimeNode.__init__(self, name = name, time = time)
-    self.minimumStartingTime = minimumStartingTime
-    """Transition can NOT fire before this time
-    """
+    """ This class represents a Transition with time in the class
+        :class:`TimedPetriNet <petrinet_simulator.TimedPetriNet>`
+        It herits form both classes :class:`TimeNode <petrinet_simulator.TimeNode>` and
+        :class:`Transition <petrinet_simulator.Transition>`
 
+        This kind of transition has time's attribute
+    """
+    def __init__(self, name='', time=0.0, minimumStartingTime=-sys.maxint - 1, show=True):
+        Transition.__init__(self, name=name, show=show)
+        TimeNode.__init__(self, name=name, time=time)
+        self.minimumStartingTime = minimumStartingTime
+        """Transition can NOT fire before this time
+        """
 
     def copy(transition):
-    if(not isinstance(transition, TimeTransition)):
-        raise TypeError('Transition expected, got a ' + str(type(transition)).split(' ')[1].split("'")[1] + ' instead')
-    
-    tr = TimeTransition(transition.name, transition.time, transition.minimumStartingTime, transition.show)
-    for tkns in transition.tokenQueue:
-        tr.insertTokenQueue(tkns)
-    for i in range(len(transition.tokenQueueAfterFire)):
-        dct = transition.tokenQueueAfterFire[i]
-        for key, dc in dct.items():
-        for t, attr in dc.items():
-            for tkns in attr['tokenQueue']:
-            tokenNames = []
-            for tkn in tkns:
-                tokenNames.append(tkn)
-            tr.insertTokenQueueAfterFire(tokenNames, t, key, i=i, place_presence= attr['place_presence'], nb_tok= attr['nb_tok'])
-    return tr
+        if not isinstance(transition, TimeTransition):
+            raise TypeError('Transition expected, got a %s instead' % transition.__class__.__name__)
 
+        tr = TimeTransition(transition.name, transition.time, transition.minimumStartingTime, transition.show)
+        for tkns in transition.tokenQueue:
+            tr.insertTokenQueue(tkns)
+        for i in range(len(transition.tokenQueueAfterFire)):
+            dct = transition.tokenQueueAfterFire[i]
+            for key, dc in dct.items():
+                for t, attr in dc.items():
+                    for tkns in attr['tokenQueue']:
+                        tokenNames = []
+                        for tkn in tkns:
+                            tokenNames.append(tkn)
+                        tr.insertTokenQueueAfterFire(tokenNames, t, key, i=i, place_presence=attr['place_presence'],
+                                                     nb_tok=attr['nb_tok'])
+        return tr
 
     def getTransitionTime(self):
-    """:returns: :attr:`time <petrinet_simulator.Transition.time>`
-    """
-    return self.time
+        """ :returns: :attr:`time <petrinet_simulator.Transition.time>`
+        """
+        return self.time

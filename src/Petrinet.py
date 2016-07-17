@@ -18,638 +18,614 @@ class PetriNet:
     """This class represents a petriNet
     """
 
-#########################################################
-################# constructor ##########################
-########################################################
+    def __init__(self, name='no name'):
+        self.name = name
+        """ Name of the petriNet
+        """
+        self.places = {}
+        """ Dictionnary of places to whose we associate a number that represents the order we add the place
+            in the petriNet
+        """
+        self.transitions = {}
+        """ Dictionnary of transitions to whose we associate a number that represents the order we add the transition
+            in the petriNet
+        """
 
-    def __init__(self, name = 'no name'):
-    self.name = name
-    """Name of the petriNet
-    """
-    self.places = {}
-    """Dictionnary of places to whose we associate a number that represents the order we add the place in the petriNet
-    """
-    self.transitions = {}
-    """Dictionnary of transitions to whose we associate a number that represents the order we add the transition in the petriNet
-    """
-    
-    self.inputs = {}
-    """Dictionnary of ``place`` to whose we associate a dictionnary of transitions: number of tokens. If a ``transition`` and an associated ``nb`` belongs to this dictionnary, it means that the ``transition`` has the ``place`` as input and the input needs ``nb`` tokens to be activated.
-    """
-    self.outputs = {}
-    """Dictionnary of ``place`` to whose we associate a dictionnary of transitions: number of tokens. If a ``transition`` and an associated ``nb`` belongs to this dictionnary, it means that the ``transition`` has the ``place`` as output and the output gives ``nb`` tokens to the place down.
-    """
-    self.upplaces = {}
-    """Dictionnary of ``transition`` to whose we associate a dictionnary of places: number of tokens. If a ``place`` and an associated ``nb`` belongs to this dictionnary, it means that the ``transition`` has the ``place`` as input and the input needs ``nb`` tokens to be activated.
-    """
-    self.downplaces = {}
-    """Dictionnary of ``transition`` to whose we associate a dictionnary of places: number of tokens. If a ``place`` and an associated ``nb`` belongs to this dictionnary, it means that the ``transition`` has the ``place`` as output and the output gives ``nb`` tokens to the place down.
-    """
-    self.token = {}
-    """Dictionnary of ``place`` to whose we associate ``nb``, the number of tokens that are on ``place``
-    """
-    
-    self.initialState = {}
-    """In this dictionnary we save all the necessary informations thanks to the method :func:'setInitialState <petrinet_simulator.PetriNet.setInitialState>` in order to reinitialized the petriNet after a simulation.
-    """
-    
-    self.posPlaces = {}
-    """Dictionnary of ``place`` to whose we associate ``pos`` the position of ``place`` in the graph build thanks to the method :func:`Tools.write_graph <petrinet_simulator.Tools.write_graph>` 
-    """
-    self.posTransitions = {}
-    """Dictionnary of ``transition`` to whose we associate ``pos`` the position of ``transition`` in the graph build thanks to the method :func:`Tools.write_graph <petrinet_simulator.Tools.write_graph>` 
-    """
-    self.paths = {}
-    """Dictionnary of tuple (``place``, ``transition``) (respectively (``transition``, ``place``)) to whose we associate the path of the edge between ``place`` and ``transition``. A path is a list of points that represent the angle of the edge. First point is the position of ``place`` (respectively ``transition``), last point is the position of ``transition`` (respectively ``place``).
-    """
-    
-    
+        self.inputs = {}
+        """ Dictionnary of ``place`` to whose we associate a dictionnary of transitions: number of tokens.
+            If a ``transition`` and an associated ``nb`` belongs to this dictionnary, it means that the ``transition``
+            has the ``place`` as input and the input needs ``nb`` tokens to be activated.
+        """
+        self.outputs = {}
+        """ Dictionnary of ``place`` to whose we associate a dictionnary of transitions: number of tokensself.
+            If a ``transition`` and an associated ``nb`` belongs to this dictionnary, it means that the ``transition``
+            has the ``place`` as output and the output gives ``nb`` tokens to the place down.
+        """
+        self.upplaces = {}
+        """ Dictionnary of ``transition`` to whose we associate a dictionnary of places: number of tokens.
+            If a ``place`` and an associated ``nb`` belongs to this dictionnary, it means that the ``transition``
+            has the ``place`` as input and the input needs ``nb`` tokens to be activated.
+        """
+        self.downplaces = {}
+        """ Dictionnary of ``transition`` to whose we associate a dictionnary of places: number of tokens.
+            If a ``place`` and an associated ``nb`` belongs to this dictionnary, it means that the ``transition``
+            has the ``place`` as output and the output gives ``nb`` tokens to the place down.
+        """
+        self.token = {}
+        """ Dictionnary of ``place`` to whose we associate ``nb``, the number of tokens that are on ``place``
+        """
+
+        self.initialState = {}
+        """ In this dictionnary we save all the necessary informations thanks to the method
+            :func:'setInitialState <petrinet_simulator.PetriNet.setInitialState>` in order to reinitialized the petriNet
+            after a simulation.
+        """
+
+        self.posPlaces = {}
+        """ Dictionnary of ``place`` to whose we associate ``pos`` the position of ``place`` in the graph build thanks
+            to the method :func:`Tools.write_graph <petrinet_simulator.Tools.write_graph>`
+        """
+        self.posTransitions = {}
+        """ Dictionnary of ``transition`` to whose we associate ``pos`` the position of ``transition`` in the graph
+            build thanks to the method :func:`Tools.write_graph <petrinet_simulator.Tools.write_graph>`
+        """
+        self.paths = {}
+        """ Dictionnary of tuple (``place``, ``transition``) (respectively (``transition``, ``place``)) to whose we
+            associate the path of the edge between ``place`` and ``transition``. A path is a list of points that
+            represent the angle of the edge. First point is the position of ``place`` (respectively ``transition``),
+            last point is the position of ``transition`` (respectively ``place``).
+        """
+
     def __repr__(self):
-    return '<PetriNet : ' + self.name + '>'
-    
-    
-    def __str__(self):
-    return self.name + ', ' + str(len(self.places))+' place(s)' + ', ' + str(len(self.transitions))+' transition(s)'
+        return '<PetriNet : %s>' % self.name
 
-    
+    def __str__(self):
+        return '%s: %s place(s), %s transition(s)' % (self.name, len(self.places), len(self.transitions))
+
     @staticmethod
     def copy(petriNet):
-    """Make a copy of ``petriNet`` using the methods :func:`copy('place') <petrinet_simulator.Place.copy>` and  :func:`copy('transition') <petrinet_simulator.Transition.copy>`
-    
-    :param petriNet: The petriNet to copy
-    :type petriNet: :class:`PetriNet <petrinet_simulator.PetriNet>`
-    
-    :returns: An instance of class :class:`PetriNet <petrinet_simulator.PetriNet>`
-    """
-    if(not isinstance(petriNet, PetriNet)):
-        raise TypeError('PetriNet expected, got a ' + str(type(petriNet)).split(' ')[1].split("'")[1] + ' instead')
-    
-    pn = PetriNet(petriNet.name)
-    copy = {}
-    for p,k in petriNet.places.items():
-        pl = Place.copy(p)
-        pn.addPlace(pl)
-        copy.setdefault(p, pl)
-    for t,c in petriNet.transitions.items():
-        tr = Transition.copy(t)
-        pn.addTransition(tr)
-        copy.setdefault(t, tr)
-    for p,dct in petriNet.inputs.items():
-        for t,n in dct.items():
-        pn.addInput(copy[p],copy[t],n)
-    for p,dct in petriNet.outputs.items():
-        for t,n in dct.items():
-        pn.addOutput(copy[p],copy[t],n)
-    for p,n in petriNet.token.items():
-        pn.token.setdefault(copy[p],n)
-    
-    return pn
+        """ Make a copy of ``petriNet`` using the methods :func:`copy('place') <petrinet_simulator.Place.copy>` and
+            :func:`copy('transition') <petrinet_simulator.Transition.copy>`
 
-#########################################################
-################# building functions ###################
-########################################################
-    
-    def addPlace(self, place, pos = (0.0, 0.0)):    
-    """Add ``place`` to the petriNet's attribute :attr:`places <petrinet_simulator.PetriNet.places>`
-    
-    :param place: place to add to the PetriNet
-    :type place: :class:`Place <petrinet_simulator.Place>`
-    
-    * options
-    
-      * ``pos = (0.0, 0.0)`` : We add ``pos`` with the key ``place`` to the petriNet's attribute :attr:`posPlaces <petrinet_simulator.PetriNet.posPlaces>`
-    """
-    if(not isinstance(place, Place)):
-        raise TypeError('Place expected, got a ' + str(type(place)).split(' ')[1].split("'")[1] + ' instead')
-    
-    self.places.setdefault(place, len(self.places))
-    self.posPlaces[place] = pos      
-    
-    
-    def addTransition(self, transition, pos = (0.0, 0.0)):
-    """Add ``transition`` to the petriNet's attribute :attr:`transitions <petrinet_simulator.PetriNet.transitions>`
-    
-    :param transition: transition to add to the PetriNet
-    :type transition: :class:`Transition <petrinet_simulator.Transition>`
-    
-    * options
-    
-      * ``pos = (0.0, 0.0)`` : We add ``pos`` with the key ``transition`` to the petriNet's attribute :attr:`posTransitions <petrinet_simulator.PetriNet.posTransitions>`
-    """
-    if(not isinstance(transition, Transition)):
-        raise TypeError('Transition expected, got a ' + str(type(transition)).split(' ')[1].split("'")[1] + ' instead')
-        
-    self.transitions.setdefault(transition, len(self.transitions))
-    self.posTransitions[transition] = pos
-    
-    
-    def addToken(self, place, tokens):
-    """Add the given tokens to ``place``
-    
-    :param place: the place where we add the tokens
-    :type place: :class:`Place <petrinet_simulator.Place>`
-    :param tokens: the token(s) to add to ``place``
-    :type tokens: *
-    
-    .. Note:: ``tokens`` can have several types:
-            
-            * *List*, *dict* or *tuple*: In this case we add all the objects in tokens following the rule below.
-            * :class:`TimeToken <petrinet_simulator.TimeToken>`: We add ``tokens`` to ``place``
-            * anything else: We transform ``tokens`` to a string using ``str()`` and we add the new token whose name is ``str(tokens)``
-    """
-    if(not isinstance(place, Place)):
-        raise TypeError('Place expected, got a ' + str(type(place)).split(' ')[1].split("'")[1] + ' instead')
-    if(self.places.get(place) == None):
-        print "**WARNING** Try to add a token to the inexistant place "+place.name
-    
-    else:
-        if(isinstance(tokens, list) or isinstance(tokens, dict) or isinstance(tokens, tuple)):
-        for token in tokens:
-            if(isinstance(token, Token)):
-            tok = token
-            else:
-            try:
-                tok = TimeToken(str(token))
-            except:
-                print "Tokens argument contains a non-Token object that can't be convert to a token"
-            place.addToken(tok)
-            if(self.token.get(place) == None):
-            self.token.setdefault(place, 1)
-            else:
-            self.token[place] += 1
+            :param petriNet: The petriNet to copy
+            :type petriNet: :class:`PetriNet <petrinet_simulator.PetriNet>`
+
+            :returns: An instance of class :class:`PetriNet <petrinet_simulator.PetriNet>`
+        """
+        if not isinstance(petriNet, PetriNet):
+            raise TypeError('PetriNet expected, got a %s instead' % petriNet.__class__.__name__)
+
+        pn = PetriNet(petriNet.name)
+        copy = {}
+        # Copy places
+        for p, k in petriNet.places.iteritems():
+            pl = Place.copy(p)
+            pn.addPlace(pl)
+            copy.setdefault(p, pl)
+        # copy transitions
+        for t, c in petriNet.transitions.iteritems():
+            tr = Transition.copy(t)
+            pn.addTransition(tr)
+            copy.setdefault(t, tr)
+        for p, dct in petriNet.inputs.iteritems():
+            for t, n in dct.iteritems():
+                pn.addInput(copy[p], copy[t], n)
+        for p, dct in petriNet.outputs.iteritems():
+            for t, n in dct.iteritems():
+                pn.addOutput(copy[p], copy[t], n)
+        for p, n in petriNet.token.iteritems():
+            pn.token.setdefault(copy[p], n)
+
+        return pn
+
+# -------------------------------------------------------
+# --------------- building functions --------------------
+# -------------------------------------------------------
+
+    def addPlace(self, place, pos=(0.0, 0.0)):
+        """ Add ``place`` to the petriNet's attribute :attr:`places <petrinet_simulator.PetriNet.places>`
+
+            :param place: place to add to the PetriNet
+            :type place: :class:`Place <petrinet_simulator.Place>`
+
+            * options
+
+              * ``pos = (0.0, 0.0)`` : We add ``pos`` with the key ``place`` to the petriNet's attribute
+                                       :attr:`posPlaces <petrinet_simulator.PetriNet.posPlaces>`
+        """
+        if not isinstance(place, Place):
+            raise TypeError('Place expected, got a %s instead' % place.__class__.__name__)
+
+        self.places.setdefault(place, len(self.places))
+        self.posPlaces[place] = pos
+
+    def addTransition(self, transition, pos=(0.0, 0.0)):
+        """ Add ``transition`` to the petriNet's attribute :attr:`transitions <petrinet_simulator.PetriNet.transitions>`
+
+            :param transition: transition to add to the PetriNet
+            :type transition: :class:`Transition <petrinet_simulator.Transition>`
+
+            * options
+
+              * ``pos = (0.0, 0.0)`` : We add ``pos`` with the key ``transition`` to the petriNet's attribute
+                                       :attr:`posTransitions <petrinet_simulator.PetriNet.posTransitions>`
+        """
+        if not isinstance(transition, Transition):
+            raise TypeError('Transition expected, got a %s instead' % transition.__class__.__name__)
+
+        self.transitions.setdefault(transition, len(self.transitions))
+        self.posTransitions[transition] = pos
+
+    def addToken(self, place, *tokens):
+        """ Add the given tokens to ``place``
+
+            :param place: the place where we add the tokens
+            :type place: :class:`Place <petrinet_simulator.Place>`
+            :param tokens: the token(s) to add to ``place``
+            :type tokens: *
+
+            .. Note:: ``tokens`` can have several types:
+
+                    * *List*, *dict* or *tuple*: In this case we add all the objects in tokens following the rule below.
+                    * :class:`TimeToken <petrinet_simulator.TimeToken>`: We add ``tokens`` to ``place``
+                    * anything else: We transform ``tokens`` to a string using ``str()`` and we add the new token whose
+                      name is ``str(tokens)``
+        """
+        if not isinstance(place, Place):
+            raise TypeError('Place expected, got a %s instead' % place.__class__.__name__)
+        if self.places.get(place) is None:
+            print "**WARNING** Try to add a token to the inexistant place %s" % place.name
+
         else:
-        if(isinstance(tokens, Token)):
-            tok = tokens
-        else:
-            try:
-            tok = TimeToken(str(tokens))
-            except:
-            print "Tokens argument contains a non-Token object that can't be convert to a token"
-        place.addToken(tok)
-        if(self.token.get(place) == None):
-            self.token.setdefault(place, 1)
-        else:
-            self.token[place] += 1
-    
+            for token in tokens:
+                if isinstance(token, Token):
+                    tok = token
+                    place.addToken(tok)
+                    if self.token.get(place) is None:
+                        self.token.setdefault(place, 1)
+                    else:
+                        self.token[place] += 1
+                else:
+                    print "Tokens argument contains a non-Token object that can't be convert to a token"
 
     def removeToken(self, place, tokens):
-    """Remove the given tokens from ``place``
-    
-    :param place: the place from where we remove the tokens
-    :type place: :class:`Place <petrinet_simulator.Place>`
-    :param tokens: the token(s) to remove from ``place``
-    :type tokens: *
-    
-    .. Warning:: ``tokens`` can have several types:
-            
-            * *List*, *dict* or *tuple*: In this case we remove all the objects in tokens following the rule below.
-            * :class:`TimeToken <petrinet_simulator.TimeToken>`: We remove ``tokens`` from ``place``
-            * anything else: nothing happens
-    """
-    if(not isinstance(place, Place)):
-        raise TypeError('Place expected, got a ' + str(type(place)).split(' ')[1].split("'")[1] + ' instead')
-    if(self.places.get(place) == None):
-        print "**WARNING** Try to remove a token to the inexistant place "+place.name
-    
-    if(isinstance(tokens, list) or isinstance(tokens, dict) or isinstance(tokens, tuple)):
+        """ Remove the given tokens from ``place``
+
+            :param place: the place from where we remove the tokens
+            :type place: :class:`Place <petrinet_simulator.Place>`
+            :param tokens: the token(s) to remove from ``place``
+            :type tokens: *
+
+            .. Warning:: ``tokens`` can have several types:
+
+                    * *List*, *dict* or *tuple*: In this case we remove all the objects in tokens following
+                                                 the rule below.
+                    * :class:`TimeToken <petrinet_simulator.TimeToken>`: We remove ``tokens`` from ``place``
+                    * anything else: nothing happens
+        """
+        if not isinstance(place, Place):
+            raise TypeError('Place expected, got a %s instead' % place.__class__.__name__)
+        if self.places.get(place) is None:
+            print "**WARNING** Try to remove a token to the inexistant place %s" % place.name
+
         for tok in tokens:
-        if(isinstance(tok, Token)):
-            token = tok
+            if isinstance(tok, Token):
+                token = tok
+                if token in place.token:
+                    if self.token.get(place) is not None:
+                        if self.token[place] > 1:
+                            self.token[place] -= 1
+                        else:
+                            del self.token[place]
+                    place.removeToken(token)
+            else:
+                print "Tokens argument contains a non-Token object that can't be convert to a token"
+
+    def insertTokenQueue(self, transition, tokenNames, i=-1, new_dct_tkn=False, place_presence=False, nb_tok=-1):
+        """ Insert the given tokenNames to the ``transition``'s attribute
+            :attr:`tokenQueue <petrinet_simulator.Transition.tokenQueue>`
+
+            :param transition: Transition to whose we add the given token's name(s) to the
+                               :attr:`tokenQueue <petrinet_simulator.Transition.tokenQueue>`
+            :type transition: :class:`Transition <petrinet_simulator.Transition>`
+            :param tokenNames: token's name(s) to add to the tokenQueue
+            :type tokenNames: *
+
+            * options:
+
+                * ``i = -1`` : see the method :func:`insertTokenQueue <petrinet_simulator.Transition.insertTokenQueue>`
+
+                * ``new_dct_tkn = False`` : see the method :func:`insertTokenQueue <petrinet_simulator.Transition.insertTokenQueue>`
+
+                * ``place_presence = False`` : see the attribute :attr:`tokenQueueAfterFire <petrinet_simulator.Transition.tokenQueueAfterFire>`
+
+                * ``nb_tok = -1`` : see the attribute :attr:`tokenQueueAfterFire <petrinet_simulator.Transition.tokenQueueAfterFire>`
+
+            .. Note:: tokenNames can have several types:
+
+                  * *List*, *dict* or *tuple*: in this case we consider all the elements as below and we add them
+                                               at the right place
+                  * anything else: We consider then the string conversion ``str(tokenNames)`` and we add it
+                                   at the right place
+
+            .. Warning:: ``nb_tok`` can only have value higher than -1
+        """
+        if not isinstance(new_dct_tkn, bool):
+            raise TypeError('Boolean expected, got a %s instead' % new_dct_tkn.__class__.__name__)
+        if not isinstance(place_presence, bool):
+            raise TypeError('Place expected, got a %s instead' % place_presence.__class__.__name__)
+
+        tokNames = []
+        if isinstance(tokenNames, list):
+            for tkn in tokenNames:
+                try:
+                    tokNames.append(str(tkn))
+                except:
+                    print "Tokens argument contains a non-String object that can't be convert to a string"
+        elif isinstance(tokenNames, tuple):
+            for tkn in tokenNames:
+                try:
+                    tokNames.append(str(tkn))
+                except:
+                    print "Tokens argument contains a non-String object that can't be convert to a string"
+        elif isinstance(tokenNames, dict):
+            for tkn in tokenNames:
+                try:
+                    tokNames.append(str(tkn))
+                except:
+                    print "Tokens argument contains a non-String object that can't be convert to a string"
+            print "**WARNING** TokenNames argument is a dictionnary, so there is no particular order !"
         else:
             try:
-            token = TimeToken(str(tok))
+                tokNames.append(str(tokenNames))
             except:
-            print "Tokens argument contains a non-Token object that can't be convert to a token"
-        if(token in place.token):
-            if(self.token.get(place) != None):
-            if(self.token[place] > 1):
-                self.token[place] -= 1
-            else:
-                del self.token[place]
-            place.removeToken(token)
-    else:
-        if(isinstance(tokens, Token)):
-        token = tokens
-        else:
-        try:
-            token = TimeToken(str(tokens))
-        except:
-            print "Tokens argument contains a non-Token object that can't be convert to a token"
-        if(token in place.token):
-        if(self.token.get(place) != None):
-            if(self.token[place] > 1):
-            self.token[place] -= 1
-            else:
-            del self.token[place]
-        place.removeToken(token)
-    
-    
-    def insertTokenQueue(self, transition, tokenNames, i = -1, new_dct_tkn = False, place_presence = False, nb_tok = -1):
-    """Insert the given tokenNames to the ``transition``'s attribute :attr:`tokenQueue <petrinet_simulator.Transition.tokenQueue>`
-    
-    :param transition: Transition to whose we add the given token's name(s) to the :attr:`tokenQueue <petrinet_simulator.Transition.tokenQueue>`
-    :type transition: :class:`Transition <petrinet_simulator.Transition>`
-    :param tokenNames: token's name(s) to add to the tokenQueue
-    :type tokenNames: *
-    
-    * options:
-    
-      * ``i = -1`` : see the method :func:`insertTokenQueue <petrinet_simulator.Transition.insertTokenQueue>`
-      
-      * ``new_dct_tkn = False`` : see the method :func:`insertTokenQueue <petrinet_simulator.Transition.insertTokenQueue>`
-      
-      * ``place_presence = False`` : see the attribute :attr:`tokenQueueAfterFire <petrinet_simulator.Transition.tokenQueueAfterFire>`
-      
-      * ``nb_tok = -1`` : see the attribute :attr:`tokenQueueAfterFire <petrinet_simulator.Transition.tokenQueueAfterFire>`
-    
-    .. Note:: tokenNames can have several types:
-    
-              * *List*, *dict* or *tuple*: in this case we consider all the elements as below and we add them at the right place
-              * anything else: We consider then the string conversion ``str(tokenNames)`` and we add it at the right place
-    
-    .. Warning:: ``nb_tok`` can only have value higher than -1
-    """
-    if(not isinstance(new_dct_tkn, bool)):
-        raise TypeError('Boolean expected, got a ' + str(type(new_dct_tkn)).split(' ')[1].split("'")[1] + ' instead')
-    if(not isinstance(place_presence, bool)):
-        raise TypeError('Place expected, got a ' + str(type(place_presence)).split(' ')[1].split("'")[1] + ' instead')
-    
-    tokNames = []
-    if(isinstance(tokenNames, list)):
-        for tkn in tokenNames:
-        try:
-            tokNames.append(str(tkn))
-        except:
-            print "Tokens argument contains a non-String object that can't be convert to a string"
-    elif(isinstance(tokenNames, tuple)):
-        for tkn in tokenNames:
-        try:
-            tokNames.append(str(tkn))
-        except:
-            print "Tokens argument contains a non-String object that can't be convert to a string"
-    elif(isinstance(tokenNames, dict)):
-        for tkn in tokenNames:
-        try:
-            tokNames.append(str(tkn))
-        except:
-            print "Tokens argument contains a non-String object that can't be convert to a string"
-        print "**WARNING** TokenNames argument is a dictionnary, so there is no particular order !"
-    else:
-        try:
-        tokNames.append(str(tokenNames))
-        except:
-        print "Tokens argument is a non-String object that can't be convert to a string"
-    
-    if(nb_tok > len(tokNames) or nb_tok < -1):
-        raise ValueError('Try to add '+str(nb_tok)+' in tokenQueue of transition '+transition.name+' but the given queue has a length of '+str(len(tokNames)))
-    
-    tkns = []
-    j = 0
-    if(nb_tok == -1):
-        nbt = len(tokNames)
-    else:
-        nbt = nb_tok
-    if(place_presence):
-        if(self.upplaces.get(transition) != None):
-        upplaces = {p: nb for p, nb in self.upplaces[transition].items()}
-        for p,nb in upplaces.items():
-            for tok in p.token:
-            tkn = tokenNames[j]
-            if(tkn in tok.name.split('_')):
-                tkns.append(tkn)
+                print "Tokens argument is a non-String object that can't be convert to a string"
+
+        if nb_tok > len(tokNames) or nb_tok < -1:
+            raise ValueError('Try to add %s in tokenQueue of transition %s but the given queue has a length of %s'
+                             % (str(nb_tok), transition.name, len(tokNames)))
+
+        tkns, j = [], 0
+        nbt = len(tokNames) if nb_tok == -1 else nb_tok
+        if place_presence:
+            if self.upplaces.get(transition) is not None:
+                upplaces = {p: nb for p, nb in self.upplaces[transition].iteritems()}
+            for p, nb in upplaces.iteritems():
+                for tok in p.token:
+                    tkn = tokenNames[j]
+                    if tkn in tok.name.split('_'):
+                        tkns.append(tkn)
+                        j += 1
+                    if j >= nbt:
+                        break
+                if j >= nbt:
+                    break
                 j += 1
-            if(j >= nbt):
-                break
-            if(j >= nbt):
-            break
-        j += 1
-    else:
-        for j in range(nbt):
-        tkns.append(tokNames[j])
-        j += 1
-    
-    if(j < nbt):
-        transition.insertTokenQueue(tkns, i=i, new_dct_tkn= new_dct_tkn)
-    
-    
-    def addInput(self, place, transition, tok = 1, path = []):
-    """Add an input between ``place`` and ``transition``. Attributes :attr:`upplaces <petrinet_simulator.PetriNet.upplaces>` and :attr:`inputs <petrinet_simulator.PetriNet.inputs>` are instanciated.
-    
-    :param place:
-    :type place: :class:`Place <petrinet_simulator.Place>`
-    :param transition:
-    :type transition: :class:`Transition <petrinet_simulator.Transition>`
-    
-    * options:
-      
-      * ``tok = 1`` : Represents the number of token that can supports the created edge
-      * ``path = []`` : Represents the path between ``place`` and ``transition``
-    
-    .. Note:: If the input already exists, no modification is done.
-          If ``place`` and/or ``transition`` doesn't exist(s) in the petriNet, they are added and the input is then created
-    """
-    if(not isinstance(place, Place)):
-        raise TypeError('Place expected, got a ' + str(type(place)).split(' ')[1].split("'")[1] + ' instead')
-    if(not isinstance(transition, Transition)):
-        raise TypeError('Transition expected, got a ' + str(type(transition)).split(' ')[1].split("'")[1] + ' instead')      
-    if(tok < 0):
-        raise ValueError('negative number of token')
-        
-    if(self.places.get(place) == None):
-        self.addPlace(place)
-    if(self.transitions.get(transition) == None):
-        self.addTransition(transition)
-        
-    if(tok != 0):
-        if(self.inputs.get(place) == None):
-        self.inputs.setdefault(place, {transition: tok})
         else:
-        self.inputs[place].setdefault(transition, tok)
-        
-        if(self.upplaces.get(transition) == None):
-        self.upplaces.setdefault(transition, {place: tok})
-        else:
-        self.upplaces[transition].setdefault(place, tok)
-        
-        self.paths.setdefault((place, transition), path)
+            for j in range(nbt):
+                tkns.append(tokNames[j])
+                j += 1
 
-    
+        if j < nbt:
+            transition.insertTokenQueue(tkns, i=i, new_dct_tkn=new_dct_tkn)
+
+    def addInput(self, place, transition, tok=1, path=[]):
+        """ Add an input between ``place`` and ``transition``.
+            Attributes :attr:`upplaces <petrinet_simulator.PetriNet.upplaces>` and
+            :attr:`inputs <petrinet_simulator.PetriNet.inputs>` are instanciated.
+
+            :param place:
+            :type place: :class:`Place <petrinet_simulator.Place>`
+            :param transition:
+            :type transition: :class:`Transition <petrinet_simulator.Transition>`
+
+            * options:
+
+              * ``tok = 1`` : Represents the number of token that can supports the created edge
+              * ``path = []`` : Represents the path between ``place`` and ``transition``
+
+            .. Note:: If the input already exists, no modification is done.
+                  If ``place`` and/or ``transition`` doesn't exist(s) in the petriNet, they are added and the input
+                  is then created
+        """
+        if not isinstance(place, Place):
+            raise TypeError('Place expected, got a %s instead' % place.__class__.__name__)
+        if not isinstance(transition, Transition):
+            raise TypeError('Transition expected, got a %s instead' % transition.__class__.__name__)
+        if tok < 0:
+            raise ValueError('negative number of token')
+
+        if self.places.get(place) is None:
+            self.addPlace(place)
+        if self.transitions.get(transition) is None:
+            self.addTransition(transition)
+
+        if tok != 0:
+            if self.inputs.get(place) is None:
+                self.inputs.setdefault(place, {transition: tok})
+            else:
+                self.inputs[place].setdefault(transition, tok)
+
+            if self.upplaces.get(transition) is None:
+                self.upplaces.setdefault(transition, {place: tok})
+            else:
+                self.upplaces[transition].setdefault(place, tok)
+
+            self.paths.setdefault((place, transition), path)
+
     def removeInput(self, place, transition):
-    """Remove the input between ``place`` and ``transition``. Attributes :attr:`upplaces <petrinet_simulator.PetriNet.upplaces>` and :attr:`inputs <petrinet_simulator.PetriNet.inputs>` are instanciated.
-    
-    :param place: *
-    :type place: :class:`Place <petrinet_simulator.Place>`
-    :param transition: *
-    :type transition: :class:`Transition <petrinet_simulator.Transition>`
-    
-    .. Note:: If no input exists, no modification is done.
-          If ``place`` and/or ``transition`` doesn't exist(s) in the petriNet, no modification is done
-    """
-    if(not isinstance(place, Place)):
-        raise TypeError('Place expected, got a ' + str(type(place)).split(' ')[1].split("'")[1] + ' instead')
-    if(not isinstance(transition, Transition)):
-        raise TypeError('Transition expected, got a ' + str(type(transition)).split(' ')[1].split("'")[1] + ' instead')     
-    
-    if(self.inputs.get(place) != None and self.inputs[place].get(transition) != None):
-        del self.inputs[place][transition]
-        if(len(self.inputs[place]) == 0):
-        del self.inputs[place]
-    if(self.upplaces.get(transition) != None and self.upplaces[transition].get(place) != None):
-        del self.upplaces[transition][place]
-        if(len(self.upplaces[transition]) == 0):
-        del self.upplaces[transition]
-    
-    if(self.paths.get((place,transition)) != None):
-        del self.paths[(place, transition)]
+        """ Remove the input between ``place`` and ``transition``.
+            Attributes :attr:`upplaces <petrinet_simulator.PetriNet.upplaces>` and
+            :attr:`inputs <petrinet_simulator.PetriNet.inputs>` are instanciated.
 
+            :param place: *
+            :type place: :class:`Place <petrinet_simulator.Place>`
+            :param transition: *
+            :type transition: :class:`Transition <petrinet_simulator.Transition>`
 
-    def addOutput(self, place, transition, tok=1, path = []):       
-    """Add an output between ``place`` and ``transition``. Attributes :attr:`downplaces <petrinet_simulator.PetriNet.downplaces>` and :attr:`outputs <petrinet_simulator.PetriNet.outputs>` are instanciated.
-    
-    :param place:
-    :type place: :class:`Place <petrinet_simulator.Place>`
-    :param transition:
-    :type transition: :class:`Transition <petrinet_simulator.Transition>`
-    
-    * options:
-      
-      * ``tok = 1`` : Represents the number of token that can supports the created edge
-      * ``path = []`` : Represents the path between ``place`` and ``transition``
-    
-    .. Note:: If the output already exists, no modification is done.
-          If ``place`` and/or ``transition`` doesn't exist(s) in the petriNet, they are added and the output is then created
-    """
-    if(not isinstance(place, Place)):
-        raise TypeError('Place expected, got a ' + str(type(place)).split(' ')[1].split("'")[1] + ' instead')
-    if(not isinstance(transition, Transition)):
-        raise TypeError('Transition expected, got a ' + str(type(transition)).split(' ')[1].split("'")[1] + ' instead')           
-    if(tok < 0):
-        raise ValueError('negative number of token')
-        
-    if(self.places.get(place) == None):
-        self.addPlace(place)
-    if(self.transitions.get(transition) == None):
-        self.addTransition(transition)
-    
-    if(tok != 0):
-        if(self.outputs.get(place) == None):
-        self.outputs.setdefault(place, {transition: tok})
-        else:
-        self.outputs[place].setdefault(transition, tok)
-        
-        if(self.downplaces.get(transition) == None):
-        self.downplaces.setdefault(transition, {place: tok})
-        else:
-        self.downplaces[transition].setdefault(place, tok)
-        
-        self.paths.setdefault((transition, place), path)
-  
- 
+            .. Note:: If no input exists, no modification is done.
+                  If ``place`` and/or ``transition`` doesn't exist(s) in the petriNet, no modification is done
+        """
+        if not isinstance(place, Place):
+            raise TypeError('Place expected, got a %s instead' % place.__class__.__name__)
+        if not isinstance(transition, Transition):
+            raise TypeError('Transition expected, got a %s instead' % transition.__class__.__name__)
+
+        if self.inputs.get(place) is not None and self.inputs[place].get(transition) is not None:
+            del self.inputs[place][transition]
+            if len(self.inputs[place]) == 0:
+                del self.inputs[place]
+        if self.upplaces.get(transition) is not None and self.upplaces[transition].get(place) is not None:
+            del self.upplaces[transition][place]
+            if len(self.upplaces[transition]) == 0:
+                del self.upplaces[transition]
+
+        if self.paths.get((place, transition)) is not None:
+            del self.paths[(place, transition)]
+
+    def addOutput(self, place, transition, tok=1, path=[]):
+        """ Add an output between ``place`` and ``transition``.
+            Attributes :attr:`downplaces <petrinet_simulator.PetriNet.downplaces>` and
+            :attr:`outputs <petrinet_simulator.PetriNet.outputs>` are instanciated.
+
+            :param place:
+            :type place: :class:`Place <petrinet_simulator.Place>`
+            :param transition:
+            :type transition: :class:`Transition <petrinet_simulator.Transition>`
+
+            * options:
+
+              * ``tok = 1`` : Represents the number of token that can supports the created edge
+              * ``path = []`` : Represents the path between ``place`` and ``transition``
+
+            .. Note:: If the output already exists, no modification is done.
+                  If ``place`` and/or ``transition`` doesn't exist(s) in the petriNet, they are added and the output
+                  is then created
+        """
+        if not isinstance(place, Place):
+            raise TypeError('Place expected, got a %s instead' % place.__class__.__name__)
+        if not isinstance(transition, Transition):
+            raise TypeError('Transition expected, got a %s instead' % transition.__class__.__name__)
+        if tok < 0:
+            raise ValueError('negative number of token')
+
+        if self.places.get(place) is None:
+            self.addPlace(place)
+        if self.transitions.get(transition) is None:
+            self.addTransition(transition)
+
+        if tok != 0:
+            if self.outputs.get(place) is None:
+                self.outputs.setdefault(place, {transition: tok})
+            else:
+                self.outputs[place].setdefault(transition, tok)
+
+            if self.downplaces.get(transition) is None:
+                self.downplaces.setdefault(transition, {place: tok})
+            else:
+                self.downplaces[transition].setdefault(place, tok)
+
+            self.paths.setdefault((transition, place), path)
+
     def removeOutput(self, place, transition):
-    """Remove an output between ``place`` and ``transition``. Attributes :attr:`downplaces <petrinet_simulator.PetriNet.downplaces>` and :attr:`outputs <petrinet_simulator.PetriNet.outputs>` are instanciated.
-    
-    :param place: *
-    :type place: :class:`Place <petrinet_simulator.Place>`
-    :param transition: *
-    :type transition: :class:`Transition <petrinet_simulator.Transition>`
-    
-    * options:
-      
-      * ``tok = 1`` : Represents the number of token that can supports the created edge
-      * ``path = []`` : Represents the path between ``place`` and ``transition``
-    
-    .. Note:: If no output exists, no modification is done.
-          If ``place`` and/or ``transition`` doesn't exist(s) in the petriNet, no modification is done
-    """
-    if(not isinstance(place, Place)):
-        raise TypeError('Place expected, got a ' + str(type(place)).split(' ')[1].split("'")[1] + ' instead')
-    if(not isinstance(transition, Transition)):
-        raise TypeError('Transition expected, got a ' + str(type(transition)).split(' ')[1].split("'")[1] + ' instead')         
-    
-        if(self.outputs.get(place) != None and self.outputs[place].get(transition) != None):
-        del self.outputs[place][transition]
-        if(len(self.outputs[place]) == 0):
-        del self.outputs[place]
-    if(self.downplaces.get(transition) != None and self.downplaces[j].get(place) != None):
-        del self.downplaces[transition][place]
-        if(len(self.downplaces[transition]) == 0):
-        del self.downplaces[transition]
-        
-        if(self.paths.get((transition,place)) != None):
-        del self.paths[(transition, place)]
-    
-    
+        """ Remove an output between ``place`` and ``transition``.
+            Attributes :attr:`downplaces <petrinet_simulator.PetriNet.downplaces>` and
+            :attr:`outputs <petrinet_simulator.PetriNet.outputs>` are instanciated.
+
+            :param place: *
+            :type place: :class:`Place <petrinet_simulator.Place>`
+            :param transition: *
+            :type transition: :class:`Transition <petrinet_simulator.Transition>`
+
+            * options:
+
+              * ``tok = 1`` : Represents the number of token that can supports the created edge
+              * ``path = []`` : Represents the path between ``place`` and ``transition``
+
+            .. Note:: If no output exists, no modification is done.
+                  If ``place`` and/or ``transition`` doesn't exist(s) in the petriNet, no modification is done
+        """
+        if not isinstance(place, Place):
+            raise TypeError('Place expected, got a %s instead' % place.__class__.__name__)
+        if not isinstance(transition, Transition):
+            raise TypeError('Transition expected, got a %s instead' % transition.__class__.__name__)
+
+        if self.outputs.get(place) is not None and self.outputs[place].get(transition) is not None:
+            del self.outputs[place][transition]
+            if len(self.outputs[place]) == 0:
+                del self.outputs[place]
+        if self.downplaces.get(transition) is not None and self.downplaces[j].get(place) is not None:
+            del self.downplaces[transition][place]
+            if len(self.downplaces[transition]) == 0:
+                del self.downplaces[transition]
+
+        if self.paths.get((transition, place)) is not None:
+            del self.paths[(transition, place)]
+
     def savePlaces(self):
-    """Save place's informations into :attr:`initialState <petrinet_simulator.PetriNet.initialState>`
-    """
-    for p,k in self.places.items():
-        copy = [Token.copy(tok) for tok in p.token]
-        self.initialState.setdefault(p, copy)
-    
-    
+        """ Save place's informations into :attr:`initialState <petrinet_simulator.PetriNet.initialState>`
+        """
+        for p, k in self.places.iteritems():
+            copy = [Token.copy(tok) for tok in p.token]
+            self.initialState.setdefault(p, copy)
+
     def saveTransitions(self):
-    """Save transition's informations into :attr:`initialState <petrinet_simulator.PetriNet.initialState>`
-    """
-    for t,c in self.transitions.items():
-        if(len(t.tokenQueue) != 0):
-        if(self.initialState.get(t) == None):
-            self.initialState.setdefault(t, {'tokenQueue':[]})
-        else:
-            self.initialState[t].setdefault('tokenQueue', [])
-        for tkns in t.tokenQueue:
-            self.initialState[t]['tokenQueue'].append([])
-            for tkn in tkns:
-            self.initialState[t]['tokenQueue'][-1].append(tkn)
-        if(len(t.tokenQueueAfterFire) != 0):
-        if(self.initialState.get(t) == None):
-            self.initialState.setdefault(t, {'tokenQueueAfterFire':[]})
-        else:
-            self.initialState[t].setdefault('tokenQueueAfterFire', [])
-        for dct in t.tokenQueueAfterFire:
-            self.initialState[t]['tokenQueueAfterFire'].append({})
-            for tkns, dc in dct.items():
-            self.initialState[t]['tokenQueueAfterFire'][-1].setdefault(tkns, {})
-            for tr, attr in dc.items():
-                at = {'tokenQueue': [], 'place_presence': attr['place_presence'], 'nb_tok': attr['nb_tok']}
-                for tab in attr['tokenQueue']:
-                at['tokenQueue'].append([])
-                for tkn in tab:
-                    at['tokenQueue'][-1].append(tkn)
-                self.initialState[t]['tokenQueueAfterFire'][-1][tkns].setdefault(tr, at)
-    
-    
+        """ Save transition's informations into :attr:`initialState <petrinet_simulator.PetriNet.initialState>`
+        """
+        for t, c in self.transitions.iteritems():
+            if len(t.tokenQueue) != 0:
+                self.initialState.setdefault(t, {})
+                self.initialState[t].setdefault('tokenQueue', [])
+            for tkns in t.tokenQueue:
+                self.initialState[t]['tokenQueue'].append([])
+                for tkn in tkns:
+                    self.initialState[t]['tokenQueue'][-1].append(tkn)
+            if len(t.tokenQueueAfterFire) != 0:
+                self.initialState.setdefault(t, {})
+                self.initialState[t].setdefault('tokenQueueAfterFire', [])
+            for dct in t.tokenQueueAfterFire:
+                self.initialState[t]['tokenQueueAfterFire'].append({})
+                for tkns, dc in dct.iteritems():
+                    self.initialState[t]['tokenQueueAfterFire'][-1].setdefault(tkns, {})
+                    for tr, attr in dc.iteritems():
+                        at = {'tokenQueue': [], 'place_presence': attr['place_presence'], 'nb_tok': attr['nb_tok']}
+                        for tab in attr['tokenQueue']:
+                            at['tokenQueue'].append([])
+                            for tkn in tab:
+                                at['tokenQueue'][-1].append(tkn)
+                        self.initialState[t]['tokenQueueAfterFire'][-1][tkns].setdefault(tr, at)
+
     def setInitialState(self):
-    """Instanciate the attribute :attr:`initialState <petrinet_simulator.PetriNet.initialState>`
-    """
-    self.initialState = {}
-    self.savePlaces()
-    self.saveTransitions()
-    
-    
-    def buildPetriNet(self, places, transitions, inputs, outputs, tokens = {}):
-    """Build a petriNet from the given arguments
-    
-    :param places: Places to add in the petriNet
-    :type places: List, dict or tuple
-    :param transitions: Transitions to add in the petriNet
-    :type transitions: List, dict or tuple
-    :param inputs: Inputs to add in the petrinet.
-    :type inputs: *
-    :param outputs: Outputs to add in the petrinet.
-    :type inputs: *
-    
-    * options:
-      
-      * ``tokens = {}``: Tokens to add in the petrinet. For each place has to be associated a list, dict or tuple of :class:`TimeToken <petrinet_simulator.TimeToken>`
-    
-    .. Note:: ``inputs`` and ``outputs`` can have several types:
-    
-            * *List* or *tuple*: In this case they are represented by a matrix whose range represents ``transitions`` and lines ``places``. The range j and the line i give the output or input between the transition whose associated number in :attr:`self.transitions <petrinet_simulator.PetriNet.transitions>` is j and ``place`` whose associated number in :attr:`self.places <petrinet_simulator.PetriNet.places>` is i.
-            * *Dict*: In this case they must have the same form as :attr:`self.transitions <petrinet_simulator.PetriNet.transitions>` and :attr:`self.places <petrinet_simulator.PetriNet.places>`.
-    
-    **Example:**
-    
-    >>> import petrinet_simulator as pns
-    >>> pt = pns.PetriNet(name = 'pt')
-    >>>  
-    >>> pl1 = pns.Place(name = 'pl1')
-    >>> pl2 = pns.Place(name = 'pl2')
-    >>> pl = [pl1, pl2]
-    >>>
-    >>> tr1 = pns.Transition(name = 'tr1')
-    >>> tr = [tr1]
-    >>>
-    >>> inputs = {pl1: {tr1: 1}}
-    >>> outputs = {pl2: {tr1: 2}}
-    >>>
-    >>> tok1 = pns.Token(name = 'tok1')
-    >>> tok2 = pns.Token(name = 'tok2')
-    >>> tokens = {pl1: [tok1, tok2]}
-    >>>
-    >>> pt.buildPetriNet(pl, tr, inputs, outputs, tokens = tokens)
-    >>> print pt #doctest: +NORMALIZE_WHITESPACE
-    # pt, 2 place(s), 1 transition(s) #
-    >>> print pt.places #doctest: +NORMALIZE_WHITESPACE
-    # {<Place : pl1>: 0, <Place : pl2>: 1} #
-    >>> print pt.transitions #doctest: +NORMALIZE_WHITESPACE
-    # {<Transition : tr1>: 0} #
-    >>> print pt.token #doctest: +NORMALIZE_WHITESPACE
-    # {<Place : pl1>: 2} #
-    >>> print pt.inputs #doctest: +NORMALIZE_WHITESPACE
-    # {<Place : pl1>: {<Transition : tr1>: 1}} #
-    >>> print pt.upplaces #doctest: +NORMALIZE_WHITESPACE
-    # {<Transition : tr1>: {<Place : pl1>: 1}}#
-    >>> print pt.outputs #doctest: +NORMALIZE_WHITESPACE
-    # {<Place : pl2>: {<Transition : tr1>: 2}} #
-    >>> print pt.downplaces #doctest: +NORMALIZE_WHITESPACE
-    # {<Transition : tr1>: {<Place : pl2>: 2}} #
-    """
-    if(not isinstance(tokens, dict)):
-        raise TypeError('Dict expected, got a ' + str(type(tokens)).split(' ')[1].split("'")[1] + ' instead')
-    if(not isinstance(inputs, dict) and not isinstance(inputs, list) and not isinstance(inputs, tuple)):
-        raise TypeError('Dict or List or Tuple expected, got a ' + str(type(inputs)).split(' ')[1].split("'")[1] + ' instead')
-    if(not isinstance(outputs, dict) and not isinstance(outputs, list) and not isinstance(outputs, tuple)):
-        raise TypeError('Dict or List or Tuple expected, got a ' + str(type(inputs)).split(' ')[1].split("'")[1] + ' instead')
-    
-    if(isinstance(places, list) or isinstance(places, dict) or isinstance(places, tuple)):
-        for p in places:    
-        self.addPlace(p)
-    else:
-        self.addPlace(places)
-    if(isinstance(transitions, list) or isinstance(transitions, dict) or isinstance(transitions, tuple)):
-        for t in transitions:
-        self.addTransition(t)
-    else:
-        self.addTransition(transitions)
-    
-    for p,k in self.places.items():
-        for t,c in self.transitions.items():
-        if(isinstance(inputs, list) or isinstance(inputs, tuple)):
-            if(inputs[k][c] > 0):
-            self.addInput(p, t, inputs[k][c])
+        """ Instanciate the attribute :attr:`initialState <petrinet_simulator.PetriNet.initialState>`
+        """
+        self.initialState = {}
+        self.savePlaces()
+        self.saveTransitions()
+
+    def buildPetriNet(self, places, transitions, inputs, outputs, tokens={}):
+        """ Build a petriNet from the given arguments
+
+            :param places: Places to add in the petriNet
+            :type places: List, dict or tuple
+            :param transitions: Transitions to add in the petriNet
+            :type transitions: List, dict or tuple
+            :param inputs: Inputs to add in the petrinet.
+            :type inputs: *
+            :param outputs: Outputs to add in the petrinet.
+            :type inputs: *
+
+            * options:
+
+              * ``tokens = {}``: Tokens to add in the petrinet. For each place has to be associated a list, dict or tuple of :class:`TimeToken <petrinet_simulator.TimeToken>`
+
+            .. Note:: ``inputs`` and ``outputs`` can have several types:
+
+                * *List* or *tuple*: In this case they are represented by a matrix whose range represents ``transitions`` and lines ``places``. The range j and the line i give the output or input between the transition whose associated number in :attr:`self.transitions <petrinet_simulator.PetriNet.transitions>` is j and ``place`` whose associated number in :attr:`self.places <petrinet_simulator.PetriNet.places>` is i.
+                * *Dict*: In this case they must have the same form as :attr:`self.transitions <petrinet_simulator.PetriNet.transitions>` and :attr:`self.places <petrinet_simulator.PetriNet.places>`.
+
+            **Example:**
+
+            >>> import petrinet_simulator as pns
+            >>> pt = pns.PetriNet(name = 'pt')
+            >>>
+            >>> pl1 = pns.Place(name = 'pl1')
+            >>> pl2 = pns.Place(name = 'pl2')
+            >>> pl = [pl1, pl2]
+            >>>
+            >>> tr1 = pns.Transition(name = 'tr1')
+            >>> tr = [tr1]
+            >>>
+            >>> inputs = {pl1: {tr1: 1}}
+            >>> outputs = {pl2: {tr1: 2}}
+            >>>
+            >>> tok1 = pns.Token(name = 'tok1')
+            >>> tok2 = pns.Token(name = 'tok2')
+            >>> tokens = {pl1: [tok1, tok2]}
+            >>>
+            >>> pt.buildPetriNet(pl, tr, inputs, outputs, tokens = tokens)
+            >>> print pt #doctest: +NORMALIZE_WHITESPACE
+            # pt, 2 place(s), 1 transition(s) #
+            >>> print pt.places #doctest: +NORMALIZE_WHITESPACE
+            # {<Place : pl1>: 0, <Place : pl2>: 1} #
+            >>> print pt.transitions #doctest: +NORMALIZE_WHITESPACE
+            # {<Transition : tr1>: 0} #
+            >>> print pt.token #doctest: +NORMALIZE_WHITESPACE
+            # {<Place : pl1>: 2} #
+            >>> print pt.inputs #doctest: +NORMALIZE_WHITESPACE
+            # {<Place : pl1>: {<Transition : tr1>: 1}} #
+            >>> print pt.upplaces #doctest: +NORMALIZE_WHITESPACE
+            # {<Transition : tr1>: {<Place : pl1>: 1}}#
+            >>> print pt.outputs #doctest: +NORMALIZE_WHITESPACE
+            # {<Place : pl2>: {<Transition : tr1>: 2}} #
+            >>> print pt.downplaces #doctest: +NORMALIZE_WHITESPACE
+            # {<Transition : tr1>: {<Place : pl2>: 2}} #
+        """
+        if not isinstance(tokens, dict):
+            raise TypeError('Dict expected, got a %s instead', tokens.__class__.__name__)
+        if not isinstance(inputs, dict) and not isinstance(inputs, list) and not isinstance(inputs, tuple):
+            raise TypeError('Dict or List or Tuple expected, got a %s instead' % inputs.__class__.__name__)
+        if not isinstance(outputs, dict) and not isinstance(outputs, list) and not isinstance(outputs, tuple):
+            raise TypeError('Dict or List or Tuple expected, got a %s instead' % outputs.__class__.__name__)
+
+        if isinstance(places, list) or isinstance(places, dict) or isinstance(places, tuple):
+            for p in places:
+                self.addPlace(p)
         else:
-            if(inputs.get(p) != None and inputs[p].get(t) != None):
-            self.addInput(p, t, inputs[p][t])
-        if(isinstance(outputs, list) or isinstance(outputs, tuple)):
-            if(outputs[k][c] > 0):
-            self.addOutput(p, t, outputs[k][c])
+            self.addPlace(places)
+        if isinstance(transitions, list) or isinstance(transitions, dict) or isinstance(transitions, tuple):
+            for t in transitions:
+                self.addTransition(t)
         else:
-            if(outputs.get(p) != None and outputs[p].get(t) != None):
-            self.addOutput(p, t, outputs[p][t])
-    
-    for p,toks in tokens.items():
-        if(isinstance(toks, list) or isinstance(toks, dict) or isinstance(toks, tuple)):
-        for tok in toks:
-            self.addToken(p, tok)
-        else:
-        self.addToken(toks)
-    
-    
+            self.addTransition(transitions)
+
+        for p, k in self.places.iteritems():
+            for t, c in self.transitions.iteritems():
+                if isinstance(inputs, list) or isinstance(inputs, tuple):
+                    if inputs[k][c] > 0:
+                        self.addInput(p, t, inputs[k][c])
+                else:
+                    if inputs.get(p) is not None and inputs[p].get(t) is not None:
+                        self.addInput(p, t, inputs[p][t])
+                if isinstance(outputs, list) or isinstance(outputs, tuple):
+                    if outputs[k][c] > 0:
+                        self.addOutput(p, t, outputs[k][c])
+                else:
+                    if outputs.get(p) is not None and outputs[p].get(t) is not None:
+                        self.addOutput(p, t, outputs[p][t])
+
+        for p, toks in tokens.iteritems():
+            if isinstance(toks, list) or isinstance(toks, dict) or isinstance(toks, tuple):
+                for tok in toks:
+                    self.addToken(p, tok)
+            else:
+                self.addToken(toks)
+
     def reinitialized(self):
-    """Reinitialized the petriNet from the petriNet's attribute :attr:`initialState <petrinet_simulator.PetriNet.initialState>`, first instanciated by method :func:`setInitialState <petrinet_simulator.PetriNet.setInitialState>`
-    """
-    if(len(self.initialState) == 0):
-        return
-    for p,k in self.places.items():
-        copy = []
-        for tok in p.token:
-        copy.append(tok)
-        for tok in copy:
-        self.removeToken(p,tok)
-        for tok in self.initialState[p]:
-        self.addToken(p, tok)
-    for t,c in self.transitions.items():
-        t.tokenQueue = []
-        t.tokenQueueAfterFire = []
-        if(self.initialState.get(t) != None):
-        if(self.initialState[t].get('tokenQueue') != None):
-            t.tokenQueue = self.initialState[t]['tokenQueue']
-        if(self.initialState[t].get('tokenQueueAfterFire') != None):
-            t.tokenQueueAfterFire = self.initialState[t]['tokenQueueAfterFire']
-    self.initialState = {}
-    
-    
-    #TODO add options to see oonly what we want to see
+        """ Reinitialized the petriNet from the petriNet's attribute
+            :attr:`initialState <petrinet_simulator.PetriNet.initialState>`, first instanciated by method
+            :func:`setInitialState <petrinet_simulator.PetriNet.setInitialState>`
+        """
+        if len(self.initialState) == 0:
+            return
+        for p, k in self.places.iteritems():
+            copy = []
+            for tok in p.token:
+                copy.append(tok)
+            for tok in copy:
+                self.removeToken(p, tok)
+            for tok in self.initialState[p]:
+                self.addToken(p, tok)
+        for t, c in self.transitions.iteritems():
+            t.tokenQueue = []
+            t.tokenQueueAfterFire = []
+            if self.initialState.get(t) is not None:
+                if self.initialState[t].get('tokenQueue') is not None:
+                    t.tokenQueue = self.initialState[t]['tokenQueue']
+                if self.initialState[t].get('tokenQueueAfterFire') is not None:
+                    t.tokenQueueAfterFire = self.initialState[t]['tokenQueueAfterFire']
+        self.initialState = {}
+
+    # TODO add options to see oonly what we want to see
     def analyse_petrinet_state(self):
     """This method print the current state of the petriNet:
     
@@ -659,42 +635,42 @@ class PetriNet:
     """
     transition_blocked = {}
     
-    for t,c in self.transitions.items():
+    for t,c in self.transitions.iteritems():
         tokenNames = None
         if(len(t.tokenQueue) != 0):
         tokenNames = []
         tokenNames.extend(t.tokenQueue[0])
-        if(self.upplaces.get(t) == None):
-        if(tokenNames != None):
+        if(self.upplaces.get(t) is None):
+        if(tokenNames is not None):
             transition_blocked.setdefault(t, {'no_upplaces': tokenNames})
         continue
-        if(tokenNames != None and len(tokenNames) == 0):
+        if(tokenNames is not None and len(tokenNames) == 0):
         transition_blocked.setdefault(t, {'empty_list_queue': True})
         continue
         upplaces = self.upplaces[t]
         b = False
-        for p,nb in upplaces.items():
+        for p,nb in upplaces.iteritems():
         if(len(p.token) == 0):
             b = True
         if(b):
         continue
-        for p,nb in upplaces.items():
+        for p,nb in upplaces.iteritems():
         n = 0
         for tok in p.token:
-            if(tok.priority.get(p) == None or t in tok.priority[p]['priority']):
+            if(tok.priority.get(p) is None or t in tok.priority[p]['priority']):
             n += 1
-            if(tokenNames != None):
+            if(tokenNames is not None):
                 for i in range(len(tokenNames)):
                 tkn = tokenNames[i]
                 if(tkn in tok.name.split('_')):
                     del tokenNames[i]
                     break
         if(nb > n):
-            if(transition_blocked.get(t) == None):
+            if(transition_blocked.get(t) is None):
             transition_blocked.setdefault(t, {})
             transition_blocked[t].setdefault(p, nb - n)
-        if(tokenNames != None):
-        if(transition_blocked.get(t) == None):
+        if(tokenNames is not None):
+        if(transition_blocked.get(t) is None):
             transition_blocked.setdefault(t, {})
         transition_blocked[t].setdefault('expecting_tokens', tokenNames)
     
@@ -704,7 +680,7 @@ class PetriNet:
         print 'The following transition are enable :'
     else:
         print 'No enable transitions'
-    for t,c in ets.items():
+    for t,c in ets.iteritems():
         print '  - '+t.name
     print ''
     
@@ -713,9 +689,9 @@ class PetriNet:
         print ''
     else:
         print 'No transitions blocked'
-    for t, dct in transition_blocked.items():
+    for t, dct in transition_blocked.iteritems():
         print 'Transition '+t.name+' is blocked :'
-        if(dct.get('no_upplaces') != None):
+        if(dct.get('no_upplaces') is not None):
         tokenNames = dct['no_upplaces']
         st = '  - no places up and '
         if(len(tokenNames) == 0):
@@ -729,16 +705,16 @@ class PetriNet:
             else:
                 st += ', '+tkn
         
-        if(dct.get('empty_list_queue') != None):
+        if(dct.get('empty_list_queue') is not None):
         print '  - transition has an empty list as first token queue'
         
         b= True
-        for p, n in dct.items():
-        if(self.places.get(p) != None):
+        for p, n in dct.iteritems():
+        if(self.places.get(p) is not None):
             print '  - ' + str(n) + ' enable token(s) missing on place ' + p.name
             b = False
         
-        if(transition_blocked.get('expecting_tokens') != None):
+        if(transition_blocked.get('expecting_tokens') is not None):
         tokenNames = transition_blocked['expecting_tokens']
         if(b and len(tokenNames) != 0):
             st = '  - There are enough enable tokens up to the transition but transition is waiting for the missing following tokens : '
@@ -786,8 +762,8 @@ class PetriNet:
     else:
         token.fire = True
     
-    if(self.inputs.get(place) != None):
-        for t,n in self.inputs[place].items():
+    if(self.inputs.get(place) is not None):
+        for t,n in self.inputs[place].iteritems():
         if(t in ets and not self.isEnabled(t)):
             del ets[t]
         if(self.isEnabled(t)):
@@ -810,10 +786,10 @@ class PetriNet:
     :returns: True if ``transition`` is enable, else False
     """
     if(isinstance(transition, Transition)):
-        if(self.transitions.get(transition) == None):
+        if(self.transitions.get(transition) is None):
         print "**WARNING** Transition argument doesn't exist in the petriNet!"
         return False
-        if(self.upplaces.get(transition) == None):
+        if(self.upplaces.get(transition) is None):
         return True
     else:
         print '**WARNING** Transition argument is not a Transition object !'
@@ -825,13 +801,13 @@ class PetriNet:
         for tokn in transition.tokenQueue[0]:
         tokName_save.append(tokn)
     upplaces = self.upplaces[transition]
-    for p,nb in upplaces.items():
+    for p,nb in upplaces.iteritems():
         toks = p.token
         b = False
         i = 0
         #are there enough token on each place up
         for tok in toks:
-        if(tok.fire and (tok.priority.get(p) == None or transition == tok.priority[p]['priority'][0] or (tok.priority[p]['pref'] == 'time' and transition in tok.priority[p]['priority']))):
+        if(tok.fire and (tok.priority.get(p) is None or transition == tok.priority[p]['priority'][0] or (tok.priority[p]['pref'] == 'time' and transition in tok.priority[p]['priority']))):
             words = tok.name.split('_')
             for j in range(len(tokName_save)):
             if(tokName_save[j] in words):
@@ -861,7 +837,7 @@ class PetriNet:
        
        .. Warning:: If there is NO input between ``place`` and ``transition``, the method return an empty list
     """
-    if(self.inputs.get(place) == None or self.inputs[place].get(transition) == None):
+    if(self.inputs.get(place) is None or self.inputs[place].get(transition) is None):
         print "**WARNING** Place argument has no input with transition argument !"
         return []
     
@@ -876,7 +852,7 @@ class PetriNet:
         for tok in transition.tokenQueue[0]:
         toks_pr.append(tok)
         for tok in place.token:
-        if(tok.priority.get(place) != None and transition in tok.priority[place]['priority'] and tok.fire):
+        if(tok.priority.get(place) is not None and transition in tok.priority[place]['priority'] and tok.fire):
             words = tok.name.split('_')
             for k in range(len(toks_pr)):
             tkn = toks_pr[k]
@@ -894,7 +870,7 @@ class PetriNet:
         j = 0
         token = None
         for tok in place.token:
-        if(not tok in tokens and tok.priority.get(place) != None and transition in tok.priority[place]['priority'] and tok.fire):
+        if(not tok in tokens and tok.priority.get(place) is not None and transition in tok.priority[place]['priority'] and tok.fire):
             j += 1
             #find the most priority transition and save the token
             for tr in range(len(tok.priority[place]['priority'])):
@@ -925,7 +901,7 @@ class PetriNet:
     
     :returns: A dictionnary :class:`Transition <petrinet_simulator.Transition>`: int
     """
-    result = {t: c for t,c in self.transitions.items() if self.isEnabled(t)}
+    result = {t: c for t,c in self.transitions.iteritems() if self.isEnabled(t)}
     return result
     
     
@@ -946,7 +922,7 @@ class PetriNet:
     
     :returns: A boolean
     """
-    for t,c in self.transitions.items():
+    for t,c in self.transitions.iteritems():
         if(self.isEnabled(t)):
         return False
     return True
@@ -962,14 +938,14 @@ class PetriNet:
     
     :returns: A boolean
     """
-    if(self.transitions.get(transition1) == None):
+    if(self.transitions.get(transition1) is None):
         return False
-    if(self.transitions.get(transition2) == None):
+    if(self.transitions.get(transition2) is None):
         return False
         
-    if(self.upplaces.get(transition1) != None):
-        for p,nb in self.upplaces[transition1].items():
-        if(self.upplaces.get(transition2) != None and p in self.upplaces[transition2]):
+    if(self.upplaces.get(transition1) is not None):
+        for p,nb in self.upplaces[transition1].iteritems():
+        if(self.upplaces.get(transition2) is not None and p in self.upplaces[transition2]):
             return True
     return False
 
@@ -997,13 +973,13 @@ class PetriNet:
     
     :returns: A boolean
     """
-    if(self.transitions.get(transition1) == None):
+    if(self.transitions.get(transition1) is None):
         return False
-    if(self.transitions.get(transition2) == None):
+    if(self.transitions.get(transition2) is None):
         return False   
             
     b = True
-    for p,nb in self.token.items():
+    for p,nb in self.token.iteritems():
         b = b and nb >= (self.inputs[p][transition1]+self.inputs[p][transition2])
     return (not b and self.isEnabled(transition1) and self.isEnabled(transition2))
     
@@ -1033,9 +1009,9 @@ class PetriNet:
     """
     places = {}
     
-    if(self.upplaces.get(transition1) != None):
-        for p1,nb1 in self.upplaces[transition1].items():
-        if(self.upplaces.get(transition2) != None and p1 in self.upplaces[transition2]):
+    if(self.upplaces.get(transition1) is not None):
+        for p1,nb1 in self.upplaces[transition1].iteritems():
+        if(self.upplaces.get(transition2) is not None and p1 in self.upplaces[transition2]):
             places.setdefault(p1, nb1)
     
     return places
@@ -1098,11 +1074,11 @@ class PetriNet:
     
     result = 0.0
     nb = 0
-    if(self.upplaces.get(transition) != None):
-        for p,n in self.upplaces[transition].items():
+    if(self.upplaces.get(transition) is not None):
+        for p,n in self.upplaces[transition].iteritems():
         tokens = self.getEnableToken(p, transition)
         for tok in tokens:
-            if(tok.priority.get(p) != None):
+            if(tok.priority.get(p) is not None):
             ind = 0
             for tr in tok.priority[p]['priority']:
                 if(tr == transition):
@@ -1125,19 +1101,19 @@ class PetriNet:
         transitions_save = {}
         
         #save the previous token and remove the token that were fired
-        if(self.upplaces.get(transition) != None):
-        for p,nb in self.upplaces[transition].items():
+        if(self.upplaces.get(transition) is not None):
+        for p,nb in self.upplaces[transition].iteritems():
         toks = self.getEnableToken(p, transition)
         for tok in toks:
             tok_save.append(tok)
             self.removeToken(p, tok)
-        if(self.inputs.get(p) != None):
-            for t,n in self.inputs[p].items():
+        if(self.inputs.get(p) is not None):
+            for t,n in self.inputs[p].iteritems():
             transitions_save.setdefault(t,n)
         
         #If a transition is not enabled anymore then its clock is reinitialized
-        for t,c in transitions_save.items():
-            if(ets.get(t) != None and not self.isEnabled(t)):
+        for t,c in transitions_save.iteritems():
+            if(ets.get(t) is not None and not self.isEnabled(t)):
                 del ets[t]
         
         #we remove the token of transition.tokenQueue
@@ -1146,7 +1122,7 @@ class PetriNet:
     
     #We adapte the tokenQueue of targeted transitions
     if(len(transition.tokenQueueAfterFire) != 0):
-        for tkk, dct in transition.tokenQueueAfterFire[0].items():
+        for tkk, dct in transition.tokenQueueAfterFire[0].iteritems():
         tkk_save = []
         for i in range(len(tkk)):
             tkk_save.append(tkk[i])
@@ -1161,7 +1137,7 @@ class PetriNet:
             i += 1
         if(len(tkk_save) != 0):
             continue
-        for tr, attr in dct.items():
+        for tr, attr in dct.iteritems():
             for i in range(len(attr['tokenQueue'])):
             tokenNames = []
             for tkn in attr['tokenQueue'][i]:
@@ -1174,18 +1150,18 @@ class PetriNet:
         
         transitions_save = {}
         #Add places after the transition that fired
-        if(self.downplaces.get(transition) != None):
-        for p,n in self.downplaces[transition].items():
+        if(self.downplaces.get(transition) is not None):
+        for p,n in self.downplaces[transition].iteritems():
         for i in range(n):
             tok = Token.copy(token)
             self.addToken(p, tok)
-        if(self.inputs.get(p) != None):
-            for t,n in self.inputs[p].items():
+        if(self.inputs.get(p) is not None):
+            for t,n in self.inputs[p].iteritems():
             transitions_save.setdefault(t,n)
     
     #If a transition is enabled we add it to ets
-        for t,c in transitions_save.items():
-            if(ets.get(t) == None and self.isEnabled(t)):
+        for t,c in transitions_save.iteritems():
+            if(ets.get(t) is None and self.isEnabled(t)):
                 ets.setdefault(t, c)
     
     
@@ -1195,7 +1171,7 @@ class PetriNet:
     tok.name = ''
     for t in tok_save:
             #we keep the intersection of each priority
-            for p,attr in t.priority.items():
+            for p,attr in t.priority.iteritems():
         if(attr['pref'] == 'priority'):
             del attr['priority'][0]
             tok.addPriority(p, attr['priority'], attr['pref'])
@@ -1211,30 +1187,30 @@ class PetriNet:
             tok.name +='_' + w
     if(tok.name == ''):
         tok.name = 'no name'
-        for p,attr in tok.priority.items():
+        for p,attr in tok.priority.iteritems():
         if(len(attr['priority']) == 0):
             del tok.priority[p]
     
     #priority after fire
     for t in tok_save:
-        for tr, dic in t.priorityAfterFire.items():
+        for tr, dic in t.priorityAfterFire.iteritems():
             if(tr == transition):
-            for loc, prt in dic.items():
+            for loc, prt in dic.iteritems():
             if(loc == 'self'):
-                for pl, attr in prt.items():
+                for pl, attr in prt.iteritems():
                 tok.addPriority(pl, attr['priority'], pref = attr['pref'])
             else:
                 for token in loc[0].token:
                 words = token.name.split('_')
                 if(loc[1] in words):
-                    for pl, trs in prt.items():
+                    for pl, trs in prt.iteritems():
                     token.addPriority(pl, trs)
         else:
-            for loc, prt in dic.items():
-            for pl, attr in prt.items():
+            for loc, prt in dic.iteritems():
+            for pl, attr in prt.iteritems():
                 tok.addPriorityAfterFire(tr, {pl: attr['priority']}, location= loc, pref= attr['pref'])
-        if(t.fireHeritance.get(transition) != None):
-        for pl, ts in t.fireHeritance[transition].items():
+        if(t.fireHeritance.get(transition) is not None):
+        for pl, ts in t.fireHeritance[transition].iteritems():
             for tt in pl.token:
             if(tt.name in ts):
                 if(not tt.fire):
@@ -1255,19 +1231,19 @@ class PetriNet:
     """
         #if only one transition can fire
         if(len(ets) == 1):
-        for t,c in ets.items():
+        for t,c in ets.iteritems():
         return t
         
         #if no transition are in conflict
         if(not self.isAllInStructuralConflict(ets)):
-            for t,c in ets.items():
+            for t,c in ets.iteritems():
         return t
         
         transition = self.mostPriorityTransition(ets)
         
         #if no transition have the priority
-        if(transition == None):
-            for t,c in ets.items():
+        if(transition is None):
+            for t,c in ets.iteritems():
         return t
         
         #return the most priority transition
@@ -1284,7 +1260,7 @@ class PetriNet:
     
     .. Warning:: ``ets`` must contain only enable transitions, otherwise an Error can be raised
     """
-    if(self.transitions.get(transition) == None):
+    if(self.transitions.get(transition) is None):
         raise ValueError("Transition '"+transition.name + "' doesn't exist in PetriNet") 
     
     #adapte the places
@@ -1345,11 +1321,11 @@ class PetriNet:
             queue.remove(token)
             ets = self.enabledTransitionsSet(token)
             neighbours = {}
-            for t,c in ets.items():
+            for t,c in ets.iteritems():
                 tk = self.fire(t,token)
                 neighbours.setdefault(t, tk)
                 b = True
-                for c,v in visited.items():
+                for c,v in visited.iteritems():
                     b2 = False
                     for i in range(len(tk)):
                         if(tk[i] != v[i]):
@@ -1392,79 +1368,79 @@ class TimedPetriNet(PetriNet):
     
     pn = TimedPetriNet(petriNet.name)
     copy = {}
-    for p,k in petriNet.places.items():
+    for p,k in petriNet.places.iteritems():
         pl = TimePlace.copy(p)
         pn.addPlace(pl)
         copy.setdefault(p, pl)
-    for t,c in petriNet.transitions.items():
+    for t,c in petriNet.transitions.iteritems():
         tr = TimeTransition.copy(t)
         pn.addTransition(tr)
         copy.setdefault(t, tr)
     #Make a copy of tokens
-    for p,k in pn.places.items():
+    for p,k in pn.places.iteritems():
         for tok in p.token:
         placeClocks = {}
-        for pl,cl in tok.placeClocks.items():
+        for pl,cl in tok.placeClocks.iteritems():
             placeClocks.setdefault(copy[pl], cl)
         tok.placeClocks = placeClocks
         ######
         transitionClocks = {}
-        for tr,cl in tok.transitionClocks.items():
+        for tr,cl in tok.transitionClocks.iteritems():
             transitionClocks.setdefault(copy[tr], cl)
         tok.transitionClocks = transitionClocks
         ######
         tclock = {}
-        for tr, cl in tok.tclock.items():
+        for tr, cl in tok.tclock.iteritems():
             tclock.setdefault(copy[tr], cl)
         tok.tclock = tclock
         ######
         priority = {}
-        for pl,attr in tok.priority.items():
+        for pl,attr in tok.priority.iteritems():
             priority.setdefault(copy[pl], {'priority': [], 'pref': attr['pref']})
             for tr in attr['priority']:
             priority[copy[pl]]['priority'].append(copy[tr])
         tok.priority = priority
         ######
         priorityAfterFire = {}
-        for tr, dct in tok.priorityAfterFire.items():
+        for tr, dct in tok.priorityAfterFire.iteritems():
             priorityAfterFire.setdefault(copy[tr], {})
-            for loc, prt in dct.items():
+            for loc, prt in dct.iteritems():
             priorityAfterFire[copy[tr]].setdefault(loc, {})
-            for pl,attr in prt.items():
+            for pl,attr in prt.iteritems():
                 priorityAfterFire[copy[tr]][loc].setdefault(copy[pl], {'priority': [], 'pref': attr['pref']})
                 for t in attr['priority']:
                 priorityAfterFire[copy[tr]][loc][copy[pl]]['priority'].append(copy[t])
         tok.priorityAfterFire = priorityAfterFire
         ######
         fireHeritance = {}
-        for tr,dct in tok.fireHeritance.items():
+        for tr,dct in tok.fireHeritance.iteritems():
             fireHeritance.setdefault(copy[tr], {})
-            for pl,toks in dct.items():
+            for pl,toks in dct.iteritems():
             fireHeritance[copy[tr]].setdefault(copy[pl], [])
             for tokName in toks:
                 fireHeritance[copy[tr]][copy[pl]].append(tokName)
         tok.fireHeritance = fireHeritance
     #Make a copy of transitions
-    for t,c in pn.transitions.items():
+    for t,c in pn.transitions.iteritems():
         tokenQueueAfterFire = []
         for dct in t.tokenQueueAfterFire:
         tokenQueueAfterFire.append({})
-        for tkns, dc in dct.items():
+        for tkns, dc in dct.iteritems():
             tokenQueueAfterFire[-1].setdefault(tkns, {})
-            for tr, attr in dc.items():
+            for tr, attr in dc.iteritems():
             tokenQueueAfterFire[-1][tkns].setdefault(copy[tr], {'tokenQueue' : [], 'place_presence': attr['place_presence'], 'nb_tok': attr['nb_tok']})
             for tns in attr['tokenQueue']:
                 tokenQueueAfterFire[-1][tkns][copy[tr]]['tokenQueue'].append([])
                 for tn in tns:
                 tokenQueueAfterFire[-1][tkns][copy[tr]]['tokenQueue'][-1].append(tn)
         t.tokenQueueAfterFire = tokenQueueAfterFire
-    for p,dct in petriNet.inputs.items():
-        for t,n in dct.items():
+    for p,dct in petriNet.inputs.iteritems():
+        for t,n in dct.iteritems():
         pn.addInput(copy[p],copy[t],n)
-    for p,dct in petriNet.outputs.items():
-        for t,n in dct.items():
+    for p,dct in petriNet.outputs.iteritems():
+        for t,n in dct.iteritems():
         pn.addOutput(copy[p],copy[t],n)
-    for p,n in petriNet.token.items():
+    for p,n in petriNet.token.iteritems():
         pn.token.setdefault(copy[p],n)
     
     pn.currentClock = petriNet.currentClock
@@ -1481,7 +1457,7 @@ class TimedPetriNet(PetriNet):
     def addToken(self, place, tokens):
     if(not isinstance(place, Place)):
         raise TypeError('Place expected, got a ' + str(type(place)).split(' ')[1].split("'")[1] + ' instead')
-    if(self.places.get(place) == None):
+    if(self.places.get(place) is None):
         print "**WARNING** Try to add a token to the inexistant place "+place.name
     
     else:
@@ -1495,12 +1471,12 @@ class TimedPetriNet(PetriNet):
             except:
                 print "Tokens argument contains a non-Token object that can't be convert to a token"
             place.addToken(tok)
-            if(self.inputs.get(place) != None):
-            for t,n in self.inputs[place].items():
+            if(self.inputs.get(place) is not None):
+            for t,n in self.inputs[place].iteritems():
                 tok.addTransitionClock(t, t.getTransitionTime())
                 tok.tclock[t] = tok.transitionClocks[t]
                 tok.addMinimumStartingTime(t, t.minimumStartingTime)
-            if(self.token.get(place) == None):
+            if(self.token.get(place) is None):
             self.token.setdefault(place, 1)
             else:
             self.token[place] += 1
@@ -1513,19 +1489,19 @@ class TimedPetriNet(PetriNet):
             except:
             print "Tokens argument contains a non-Token object that can't be convert to a token"
         place.addToken(tok)
-        if(self.inputs.get(place) != None):
-            for t,n in self.inputs[place].items():
+        if(self.inputs.get(place) is not None):
+            for t,n in self.inputs[place].iteritems():
             tok.addTransitionClock(t, t.getTransitionTime())
             tok.tclock[t] = tok.transitionClocks[t]
             tok.addMinimumStartingTime(t, t.minimumStartingTime)
-        if(self.token.get(place) == None):
+        if(self.token.get(place) is None):
             self.token.setdefault(place, 1)
         else:
             self.token[place] += 1
     
     
     def savePlaces(self):
-    for p,k in self.places.items():
+    for p,k in self.places.iteritems():
         copy = [TimeToken.copy(tok) for tok in p.token]
         self.initialState.setdefault(p, copy)
     
@@ -1539,7 +1515,7 @@ class TimedPetriNet(PetriNet):
     def reinitialized(self):
     if(len(self.initialState) == 0):
         return
-    for p,k in self.places.items():
+    for p,k in self.places.iteritems():
         copy = []
         for tok in p.token:
         copy.append(tok)
@@ -1547,10 +1523,10 @@ class TimedPetriNet(PetriNet):
         self.removeToken(p,tok)
         for tok in self.initialState[p]:
         self.addToken(p, tok)
-    for t,c in self.transitions.items():
+    for t,c in self.transitions.iteritems():
         t.tokenQueue = []
         t.tokenQueueAfterFire = []
-        if(self.initialState.get(t) != None):
+        if(self.initialState.get(t) is not None):
         if(self.initialState[t].get('tokenQueue')):
             t.tokenQueue = self.initialState[t]['tokenQueue']
         if(self.initialState[t].get('tokenQueueAfterFire')):
@@ -1564,7 +1540,7 @@ class TimedPetriNet(PetriNet):
 ########################################################
 
     def getEnableToken(self, place, transition):
-    if(self.inputs.get(place) == None or self.inputs[place].get(transition) == None):
+    if(self.inputs.get(place) is None or self.inputs[place].get(transition) is None):
         print "**WARNING** Place argument has no input with transition argument !"
         return []
     
@@ -1603,7 +1579,7 @@ class TimedPetriNet(PetriNet):
         for time in times:
         tab = toks_sorted[time]
         for tok in tab:
-            if(tok.priority.get(place) != None and transition in tok.priority[place]['priority'] and tok.fire):
+            if(tok.priority.get(place) is not None and transition in tok.priority[place]['priority'] and tok.fire):
             words = tok.name.split('_')
             for k in range(len(toks_pr)):
                 tkn = toks_pr[k]
@@ -1621,7 +1597,7 @@ class TimedPetriNet(PetriNet):
             j = 0
             token = None
             for tok in tab:
-                if(not tok in tokens and tok.priority.get(place) != None and transition in tok.priority[place]['priority'] and tok.fire):
+                if(not tok in tokens and tok.priority.get(place) is not None and transition in tok.priority[place]['priority'] and tok.fire):
                 j += 1
                 #find the most priority transition and save the token
                 for tr in range(len(tok.priority[place]['priority'])):
@@ -1640,7 +1616,7 @@ class TimedPetriNet(PetriNet):
             i += 1
         if(i < nb):
             for tok in tab:
-                if(tok.priority.get(place) == None and not tok in tokens and tok.fire):
+                if(tok.priority.get(place) is None and not tok in tokens and tok.fire):
                 ind = 0
             for tk in tokens:
                 if(tok.pclock <= tk.pclock):
@@ -1675,12 +1651,12 @@ class TimedPetriNet(PetriNet):
         transitions = []
         maxDuration = {}
         
-        for t,c in ets.items():
+        for t,c in ets.iteritems():
             mx = 0.0
             
             #for each t we compute the maximum time of the places before
-            if(self.upplaces.get(t) != None):
-        for p,nb in self.upplaces[t].items():
+            if(self.upplaces.get(t) is not None):
+        for p,nb in self.upplaces[t].iteritems():
             toks = self.getEnableToken(p,t)
             delta = toks[-1].minimumStartingTime.get(t, -sys.maxint-1) - self.currentClock
             if(delta <= toks[-1].pclock):
@@ -1699,7 +1675,7 @@ class TimedPetriNet(PetriNet):
                 duration_ = mx
         
         #we collect the transitions that can fire at the same minimal time duration
-        for t,d in maxDuration.items():
+        for t,d in maxDuration.iteritems():
             if(d <= duration and d == duration_):
                 transitions.append(t)
         
@@ -1711,19 +1687,19 @@ class TimedPetriNet(PetriNet):
         transitions_save = {}
         
         #save the previous token and remove the token that were fired
-        if(self.upplaces.get(transition) != None):
-        for p,nb in self.upplaces[transition].items():
+        if(self.upplaces.get(transition) is not None):
+        for p,nb in self.upplaces[transition].iteritems():
         toks = self.getEnableToken(p, transition)
         for tok in toks:
             tok_save.append(tok)
             self.removeToken(p, tok)
-        if(self.inputs.get(p) != None):
-            for t,n in self.inputs[p].items():
+        if(self.inputs.get(p) is not None):
+            for t,n in self.inputs[p].iteritems():
             transitions_save.setdefault(t,n)
         
         #If a transition is not enabled anymore then its clock is reinitialized
-        for t,c in transitions_save.items():
-            if(ets.get(t) != None and not self.isEnabled(t)):
+        for t,c in transitions_save.iteritems():
+            if(ets.get(t) is not None and not self.isEnabled(t)):
                 del ets[t]
         
         #we remove the token of transition.tokenQueue
@@ -1732,7 +1708,7 @@ class TimedPetriNet(PetriNet):
     
     #We adapte the tokenQueue of targeted transitions
     if(len(transition.tokenQueueAfterFire) != 0):
-        for tkk, dct in transition.tokenQueueAfterFire[0].items():
+        for tkk, dct in transition.tokenQueueAfterFire[0].iteritems():
         tkk_save = []
         for i in range(len(tkk)):
             tkk_save.append(tkk[i])
@@ -1747,7 +1723,7 @@ class TimedPetriNet(PetriNet):
             i += 1
         if(len(tkk_save) != 0):
             continue
-        for tr, attr in dct.items():
+        for tr, attr in dct.iteritems():
             for i in range(len(attr['tokenQueue'])):
             tokenNames = []
             for tkn in attr['tokenQueue'][i]:
@@ -1757,7 +1733,7 @@ class TimedPetriNet(PetriNet):
         
         transitions_save = {}
         #Adapte every place clocks
-        for p,k in self.places.items():
+        for p,k in self.places.iteritems():
             for tok in p.token:
                 if(tok.pclock <= duration):
             dur = duration - tok.pclock
@@ -1765,8 +1741,8 @@ class TimedPetriNet(PetriNet):
                 else:
             dur = 0.0
                     tok.pclock = tok.pclock - duration
-                if(self.inputs.get(p) != None):
-            for t,n in self.inputs[p].items():
+                if(self.inputs.get(p) is not None):
+            for t,n in self.inputs[p].iteritems():
             delta = tok.minimumStartingTime.get(t, -sys.maxint-1) - (self.currentClock + duration)
             if(delta > 0 and dur > delta):
                 tok.tclock[t] -= dur - delta
@@ -1777,7 +1753,7 @@ class TimedPetriNet(PetriNet):
                 if(tok.tclock.get(t) < 0.0):
                 tok.tclock[t] = 0.0
         
-        for p,n in self.upplaces.get(transition, {}).items():
+        for p,n in self.upplaces.get(transition, {}).iteritems():
         for tok in p.token:
         tok.addTransitionClock(transition, transition.getTransitionTime())
         tok.tclock[transition] = tok.transitionClocks[transition]
@@ -1786,18 +1762,18 @@ class TimedPetriNet(PetriNet):
         token = self.__tokenAfterFire(transition, ets, tok_save)
         
         #Add places after the transition that fired
-        if(self.downplaces.get(transition) != None):
-        for p,n in self.downplaces[transition].items():
+        if(self.downplaces.get(transition) is not None):
+        for p,n in self.downplaces[transition].iteritems():
         for i in range(n):
             tok = TimeToken.copy(token)
             self.addToken(p, tok)
-        if(self.inputs.get(p) != None):
-            for t,n in self.inputs[p].items():
+        if(self.inputs.get(p) is not None):
+            for t,n in self.inputs[p].iteritems():
             transitions_save.setdefault(t,n)
     
     #If a transition is enabled we add it to ets
-        for t,c in transitions_save.items():
-            if(ets.get(t) == None and self.isEnabled(t)):
+        for t,c in transitions_save.iteritems():
+            if(ets.get(t) is None and self.isEnabled(t)):
                 ets.setdefault(t, c)
     
     
@@ -1807,13 +1783,13 @@ class TimedPetriNet(PetriNet):
     tok.name = ''
     for t in tok_save:
         #for each place we save the longest clock
-        for p,c in t.placeClocks.items():
+        for p,c in t.placeClocks.iteritems():
             tok.addPlaceClock(p, c)
         #for each place we save the longest clock
-        for tr,c in t.transitionClocks.items():
+        for tr,c in t.transitionClocks.iteritems():
             tok.addTransitionClock(tr, c)
             #we keep the intersection of each priority
-            for p,attr in t.priority.items():
+            for p,attr in t.priority.iteritems():
         if(attr['pref'] == 'priority'):
             del attr['priority'][0]
             tok.addPriority(p, attr['priority'], attr['pref'])
@@ -1829,30 +1805,30 @@ class TimedPetriNet(PetriNet):
             tok.name +='_' + w
     if(tok.name == ''):
         tok.name = 'no name'
-        for p,attr in tok.priority.items():
+        for p,attr in tok.priority.iteritems():
         if(len(attr['priority']) == 0):
             del tok.priority[p]
     
     #priority after fire
     for t in tok_save:
-        for tr, dic in t.priorityAfterFire.items():
+        for tr, dic in t.priorityAfterFire.iteritems():
             if(tr == transition):
-                for loc, prt in dic.items():
+                for loc, prt in dic.iteritems():
             if(loc == 'self'):
-                for pl, attr in prt.items():
+                for pl, attr in prt.iteritems():
                 tok.addPriority(pl, attr['priority'], pref = attr['pref'])
             else:
                 for token in loc[0].token:
                 words = token.name.split('_')
                 if(loc[1] in words):
-                    for pl, attr in prt.items():
+                    for pl, attr in prt.iteritems():
                     token.addPriority(pl, attr['priority'], attr['pref'])
         else:
-            for loc, prt in dic.items():
-            for pl, attr in prt.items():
+            for loc, prt in dic.iteritems():
+            for pl, attr in prt.iteritems():
                 tok.addPriorityAfterFire(tr, {pl: attr['priority']}, location= loc, pref= attr['pref'])
-        if(t.fireHeritance.get(transition) != None):
-        for pl, ts in t.fireHeritance[transition].items():
+        if(t.fireHeritance.get(transition) is not None):
+        for pl, ts in t.fireHeritance[transition].iteritems():
             for tt in pl.token:
             if(tt.name in ts):
                 if(not tt.fire):
@@ -1886,7 +1862,7 @@ class TimedPetriNet(PetriNet):
         transition = self.mostPriorityTransition(transitions)
         
         #if no transition have the priority
-        if(transition == None):
+        if(transition is None):
             return transitions[len(transitions)-1], duration_
         
         #return the most priority transition
@@ -1894,7 +1870,7 @@ class TimedPetriNet(PetriNet):
 
 
     def fire(self, transition, ets, duration = 0.0):
-    if(self.transitions.get(transition) == None):
+    if(self.transitions.get(transition) is None):
         raise ValueError("Transition '"+transition.name + "' doesn't exist in PetriNet") 
     
     #adapte the places
@@ -1905,7 +1881,7 @@ class TimedPetriNet(PetriNet):
     #compute the minimum of time for enabled transitions, and choose the transition
     transition, duration_ = self.computeFiringTransition(ets, duration)
     
-    if(transition == None):
+    if(transition is None):
         return duration_, None
     
     #fire and adapte each clocks
@@ -1926,7 +1902,7 @@ class TimedPetriNet(PetriNet):
     """
         if(not isinstance(show, bool)):
         raise TypeError('Boolean expected, got a ' + str(type(show)).split(' ')[1].split("'")[1] + ' instead')
-    if(step != None and not isinstance(step, int) and not isinstance(step, long) and not isinstance(step, float)):
+    if(step is not None and not isinstance(step, int) and not isinstance(step, long) and not isinstance(step, float)):
         raise TypeError('Numaric value expected, got a ' + str(type(step)).split(' ')[1].split("'")[1] + ' instead')
         
         if(show):
@@ -1939,7 +1915,7 @@ class TimedPetriNet(PetriNet):
         ets = self.enabledTransitionsSet()
         
         n = 0
-        if(step == None):
+        if(step is None):
         while(len(ets) != 0 and not n >= niter):
         duration, transition = self.oneFireSimulation(ets)
         
@@ -1962,7 +1938,7 @@ class TimedPetriNet(PetriNet):
             duration_, transition = self.oneFireSimulation(ets, duration)
             n += 1
             
-            if(transition == None):
+            if(transition is None):
             b = False
             else:
             duration -= duration_
@@ -2025,8 +2001,8 @@ class Tools:
         raise TypeError('PetriNet expected, got a ' + str(type(petriNet2)).split(' ')[1].split("'")[1] + ' instead')
     
     minimumDate = None
-    if(petriNet1.startDate != None):
-        if(petriNet2.startDate != None):
+    if(petriNet1.startDate is not None):
+        if(petriNet2.startDate is not None):
         dur = (petriNet1.startDate - petriNet2.startDate).total_seconds()/60.
         if(dur > 0):
             minimumDate = petriNet2.startDate
@@ -2035,15 +2011,15 @@ class Tools:
         else:
         minimumDate = petriNet1.startDate
     else:
-        if(petriNet2.startDate != None):
+        if(petriNet2.startDate is not None):
         minimumDate = petriNet2.startDate
 
     result = TimedPetriNet(str(name), startDate = minimumDate)
     
     #add the places and tokens
-    for p1, k1 in petriNet1.places.items():
+    for p1, k1 in petriNet1.places.iteritems():
         result.addPlace(p1)
-    for p2, k2 in petriNet2.places.items():
+    for p2, k2 in petriNet2.places.iteritems():
         result.addPlace(p2)
     
     #add tokens
@@ -2051,9 +2027,9 @@ class Tools:
     result.token.update(petriNet2.token)
     
     #add the transitions
-    for t1, c1 in petriNet1.transitions.items():
+    for t1, c1 in petriNet1.transitions.iteritems():
         result.addTransition(t1)
-    for t2, c2 in petriNet2.transitions.items():
+    for t2, c2 in petriNet2.transitions.iteritems():
         result.addTransition(t2)
     
     #create the inputs
@@ -2067,10 +2043,10 @@ class Tools:
     result.downplaces.update(petriNet2.downplaces)       
     
     #add the input_connections and output_connections
-    if(input_connections != None):
+    if(input_connections is not None):
         for t in input_connections:
         result.addInput(t[0], t[1])
-    if(output_connections != None):    
+    if(output_connections is not None):    
         for t in output_connections:
         result.addOutput(t[0], t[1]) 
     
@@ -2156,14 +2132,14 @@ class Tools:
     
     for lines in edges:
         idd1, idd2, path = __create_edge(lines)
-        for p,k in pt.places.items():
+        for p,k in pt.places.iteritems():
         if(p.idd == idd1):
             place = p
             typ = 'input'
         if(p.idd == idd2):
             place = p
             typ = 'output'
-        for t,c in pt.transitions.items():
+        for t,c in pt.transitions.iteritems():
         if(t.idd == idd1 or t.idd == idd2):
             transition = t
         
@@ -2256,7 +2232,7 @@ class Tools:
         node.addToken(tok)
     if(typ == 'transition'):
         node.name = name
-    if(typ == None):
+    if(typ is None):
         raise ValueError('this node is not a real node')
     
     node.idd = idd
@@ -2341,22 +2317,22 @@ class Tools:
     doc.write('  <graph edgedefault="directed" id="G">\n')
     doc.write('    <data key="d0"/>\n')
     
-    for p,k in pt.places.items():
+    for p,k in pt.places.iteritems():
         Tools.__write_node(doc, p, 'place', k, pt.posPlaces[p])
         
     nb = len(pt.places)
-    for t,c in pt.transitions.items():
+    for t,c in pt.transitions.iteritems():
         Tools.__write_node(doc, t, 'transition', nb + c, pt.posTransitions[t])
     
     i = 0
-    for p,dct in pt.inputs.items():
-        for t,nb in dct.items():
+    for p,dct in pt.inputs.iteritems():
+        for t,nb in dct.iteritems():
         k = pt.places[p]
         c = pt.transitions[t]
         Tools.__write_edge(doc, i, k, nb + c, pt.paths[(p,t)])
         i += 1
-    for p,dct in pt.outputs.items():
-        for t,nb in dct.items():
+    for p,dct in pt.outputs.iteritems():
+        for t,nb in dct.iteritems():
         k = pt.places[p]
         c = pt.transitions[t]
         Tools.__write_edge(doc, i, nb + c, k, pt.paths[(p,t)])
@@ -2395,7 +2371,7 @@ class Tools:
         doc.write('            </y:ModelParameter>\n')
         doc.write('          </y:NodeLabel>\n')
     
-    if(node.name != 'no name' and node.name != None):
+    if(node.name != 'no name' and node.name is not None):
         doc.write('          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="30" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="40.7529296875" modelName="eight_pos" modelPosition="s" textColor="#000000" visible="true" width="185.787109375" x="-62.8935546875" y="64.0">'+node.name+'</y:NodeLabel>\n')
     
     if(typ == 'place' and len(node.token) > 0):
