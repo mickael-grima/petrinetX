@@ -5,8 +5,7 @@ Created on Sat Jul 16 14:54:37 2016
 @author: Mickael Grima
 """
 
-from Transition import Transition
-from Place import Place
+import logging
 
 
 class Token:
@@ -19,7 +18,7 @@ class Token:
     It can have priority transitions or fire heritance to impose an order for the firing token.
     """
 
-    def __init__(self, name='no name', show=True, fire=True):
+    def __init__(self, name='no name', logger=logging, show=True, fire=True):
         self.name = name
         """ If several tokens are firing by the same transition,
             the result is then a new token whose name is an union
@@ -48,6 +47,7 @@ class Token:
             Then we change the fire parameter of these tokens in True. We can add a fireHeritance for a given transition
             using the method :func:`addFireHeritance() <petrinet_simulator.Token.addFireHeritance>`
         """
+        self.logger = logger
 
     def __str__(self):
         return ', '.join(self.name.split('_'))
@@ -55,7 +55,7 @@ class Token:
     def __repr__(self):
         return '<Token : %s>' % str(self)
 
-    def copy(token):
+    def copy(self):
         """Make a copy of a token
 
         :param token: token to copy
@@ -67,20 +67,20 @@ class Token:
                  If the variable is not a token, the method
                  raise an exception
         """
-        if not isinstance(token, Token):
-            raise TypeError('Token expected, got a %s instead' % token.__class__.__name__)
-
-        tok = Token(token.name, token.show, token.fire)
-        for place, attr in token.priority.iteritems():
-            tok.addPriority(place, attr['priority'], attr['pref'])
-        for transition, dictionnary in token.priorityAfterFire.iteritems():
-            for loc, prt in dictionnary.iteritems():
-                tok.addPriorityAfterFire(transition, prt, loc)
-        for transition, attr in token.fireHeritance.iteritems():
-            for place, toks in attr.iteritems():
-                for tk in toks:
-                    tok.addFireHeritance(tk, place, transition)
-        return tok
+        try:
+            tok = Token(self.name, self.show, self.fire)
+            for place, attr in self.priority.iteritems():
+                tok.addPriority(place, attr['priority'], attr['pref'])
+            for transition, dictionnary in self.priorityAfterFire.iteritems():
+                for loc, prt in dictionnary.iteritems():
+                    tok.addPriorityAfterFire(transition, prt, loc)
+            for transition, attr in self.fireHeritance.iteritems():
+                for place, toks in attr.iteritems():
+                    for tk in toks:
+                        tok.addFireHeritance(tk, place, transition)
+            return tok
+        except:
+            return None
 
     def addPriority(self, place, pref='time', *transitions):
         """ Add priority for ``place``
@@ -239,8 +239,8 @@ class Token:
 class TimeToken(Token):
     """This class represent a token with time. It herits from the parent class :class:`Token <petrinet_simulator.Token>`
     """
-    def __init__(self, name='no name', show=True, fire=True):
-        super(TimeToken, self).__init__(name=name, show=show, fire=fire)
+    def __init__(self, name='no name', logger=logging, show=True, fire=True):
+        Token.__init__(self, name=name, logger=logger, show=show, fire=fire)
         self.placeClocks = {}
         """ We save inside a place as key and associated to this place the time that the token will live on this place.
             We can add a place's clock using the method addPlaceClock()
@@ -264,48 +264,48 @@ class TimeToken(Token):
         """The token can't be fired by the given transition before the associated time
         """
 
-    def copy(token):
-        if not isinstance(token, TimeToken):
-            raise TypeError('TimeToken expected, got a %s instead' % token.__class__.__name__)
+    def copy(self):
+        try:
+            # The new token
+            tok = TimeToken(self.name, self.show, self.fire)
 
-        # The new token
-        tok = TimeToken(token.name, token.show, token.fire)
+            # adapte pclock
+            tok.pclock = self.pclock
 
-        # adapte pclock
-        tok.pclock = token.pclock
+            # Adapte currentClock
+            tok.currentClock = self.currentClock
 
-        # Adapte currentClock
-        tok.currentClock = token.currentClock
+            # Adapte placeClocks
+            for place, clock in self.placeClocks.iteritems():
+                tok.addPlaceClock(place, clock)
 
-        # Adapte placeClocks
-        for place, clock in token.placeClocks.iteritems():
-            tok.addPlaceClock(place, clock)
+            # Adapte transitionClocks
+            for transition, clock in self.transitionClocks.iteritems():
+                tok.addTransitionClock(transition, clock)
 
-        # Adapte transitionClocks
-        for transition, clock in token.transitionClocks.iteritems():
-            tok.addTransitionClock(transition, clock)
+            # adapte tclock
+            for transition, clock in self.tclock.iteritems():
+                tok.tclock.setdefault(transition, clock)
 
-        # adapte tclock
-        for transition, clock in token.tclock.iteritems():
-            tok.tclock.setdefault(transition, clock)
+            # Adapte priority
+            for place, attr in self.priority.iteritems():
+                tok.addPriority(place, attr['priority'], attr['pref'])
 
-        # Adapte priority
-        for place, attr in token.priority.iteritems():
-            tok.addPriority(place, attr['priority'], attr['pref'])
+            # adapte priorityAfterFire
+            for transition, dct in self.priorityAfterFire.iteritems():
+                for loc, prt in dct.iteritems():
+                    for pl, attr in prt.iteritems():
+                        tok.addPriorityAfterFire(transition, {pl: attr['priority']}, location=loc, pref=attr['pref'])
 
-        # adapte priorityAfterFire
-        for transition, dct in token.priorityAfterFire.iteritems():
-            for loc, prt in dct.iteritems():
-                for pl, attr in prt.iteritems():
-                    tok.addPriorityAfterFire(transition, {pl: attr['priority']}, location=loc, pref=attr['pref'])
+            # adapte fireHeritance
+            for transition, attr in self.fireHeritance.iteritems():
+                for place, toks in attr.iteritems():
+                    for tk in toks:
+                        tok.addFireHeritance(tk, place, transition)
 
-        # adapte fireHeritance
-        for transition, attr in token.fireHeritance.iteritems():
-            for place, toks in attr.iteritems():
-                for tk in toks:
-                    tok.addFireHeritance(tk, place, transition)
-
-        return tok
+            return tok
+        except:
+            return None
 
     def addPlaceClock(self, place, clock=None):
         """ Add a place Clock to ``place``.
@@ -320,8 +320,7 @@ class TimeToken(Token):
 
         .. Note:: If a place's clock already exists for ``place``, we add ``clock`` only if its value is higher
         """
-        if not isinstance(place, Place):
-            raise TypeError('Place expected, got a %s instead' % place.__class__.__name__)
+        assert place.__class__.__name__ == 'Place'
 
         if self.placeClocks.get(place) is None:
             if clock is None:
@@ -351,8 +350,7 @@ class TimeToken(Token):
         .. Note:: If a transition's clock already exists for ``transition``,
                   we add ``clock`` only if its value is higher
         """
-        if not isinstance(transition, Transition):
-            raise TypeError('Transition expected, got a %s instead' % transition.__class__.__name__)
+        assert transition.__class__.__name__ == 'Transition'
 
         if self.transitionClocks.get(transition) is None:
             if clock is None:
@@ -379,10 +377,7 @@ class TimeToken(Token):
         .. Note:: If a transition's minimumStartingTime already exists for ``transition``,
                   we add ``time`` only if its value is higher
         """
-        if not isinstance(time, int) and not isinstance(time, long) and not isinstance(time, float):
-            raise TypeError('Int, long or float expected, got a %s instead' % time.__class__.__name__)
-        if not isinstance(transition, Transition):
-            print '**WARNING** transition argument is not a Transition object'
+        assert transition.__class__.__name__ == 'Transition'
         if self.minimumStartingTime.get(transition) is None:
             if time is not None:
                 self.minimumStartingTime.setdefault(transition, time)

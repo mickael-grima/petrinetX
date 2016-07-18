@@ -5,7 +5,10 @@ Created on Sat Jul 16 17:55:32 2016
 @author: Mickael Grima
 """
 import sys
+sys.path.append("/home/mickael/Documents/projects/petrinetX/src/")
+
 from Node import Node, TimeNode
+import logging
 
 
 class Transition(Node):
@@ -15,8 +18,8 @@ class Transition(Node):
 
         A transition can fire and have :class:`Token <petrinet_simulator.Token>`'s preferences
     """
-    def __init__(self, name='no name', show=True):
-        Node.__init__(self, name=name)
+    def __init__(self, name='no name', logger=logging, show=True):
+        Node.__init__(self, name=name, logger=logger)
         self.show = show
         """ Boolean
             Can be:
@@ -53,7 +56,7 @@ class Transition(Node):
     def __str__(self):
         return self.name
 
-    def copy(transition):
+    def copy(self):
         """Make a copy of ``transition``
 
         :param transition: transition to copy
@@ -61,29 +64,29 @@ class Transition(Node):
 
         :returns: An instance of the class :class:`Transition <petrinet_simulator.Transition>`
         """
-        if not isinstance(transition, Transition):
-            raise TypeError('Transition expected, got a %s instead' % transition.__class__.__name__)
+        try:
+            # Create the new transition
+            tr = Transition(self.name, self.show)
 
-        # Create the new transition
-        tr = Transition(transition.name, transition.show)
+            # Adapte tokenQueue
+            for tkns in self.tokenQueue:
+                tr.insertTokenQueue(tkns)
 
-        # Adapte tokenQueue
-        for tkns in transition.tokenQueue:
-            tr.insertTokenQueue(tkns)
+            # Apdate tokenQueueAfterFire
+            for i in range(len(self.tokenQueueAfterFire)):
+                dct = self.tokenQueueAfterFire[i]
+                for key, dc in dct.items():
+                    for t, attr in dc.items():
+                        for tkns in attr['tokenQueue']:
+                            tokenNames = []
+                            for tkn in tkns:
+                                tokenNames.append(tkn)
+                            tr.insertTokenQueueAfterFire(tokenNames, t, key, i=i, place_presence=attr['place_presence'],
+                                                         nb_tok=attr['nb_tok'])
 
-        # Apdate tokenQueueAfterFire
-        for i in range(len(transition.tokenQueueAfterFire)):
-            dct = transition.tokenQueueAfterFire[i]
-            for key, dc in dct.items():
-                for t, attr in dc.items():
-                    for tkns in attr['tokenQueue']:
-                        tokenNames = []
-                        for tkn in tkns:
-                            tokenNames.append(tkn)
-                        tr.insertTokenQueueAfterFire(tokenNames, t, key, i=i, place_presence=attr['place_presence'],
-                                                     nb_tok=attr['nb_tok'])
-
-        return tr
+            return tr
+        except:
+            return None
 
     def insertTokenQueue(self, *tokenNames, **options):
         """ Insert the given tokenNames to the transition's attribute
@@ -130,7 +133,7 @@ class Transition(Node):
                 try:
                     self.tokenQueue[-1].append(str(tokenName))
                 except:
-                    print "TokeNames argument contains elements that can't be convert into a string"
+                    self.logger.warning("TokeNames argument contains elements that can't be convert into a string")
             else:
                 if new_dct_tkn:
                     self.tokenQueue.insert(i, [])
@@ -138,7 +141,7 @@ class Transition(Node):
                 try:
                     self.tokenQueue[i].append(str(tokenName))
                 except:
-                    print "TokeNames argument contains elements that can't be convert into a string"
+                    self.logger.warning("TokeNames argument contains elements that can't be convert into a string")
 
     def insertTokenQueueAfterFire(self, tokenNames, transition, tkns, i=-1, j=-1, new_dct_tk_queue=False,
                                   new_dct_tkn=False, place_presence=False, nb_tok=-1):

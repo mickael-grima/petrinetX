@@ -5,8 +5,11 @@ Created on Sat Jul 16 17:55:32 2016
 @author: Mickael Grima
 """
 
+import sys
+sys.path.append("/home/mickael/Documents/projects/petrinetX/src/")
+
 from Node import Node, TimeNode
-from Token import Token, TimeToken
+import logging
 
 
 class Place(Node):
@@ -16,8 +19,8 @@ class Place(Node):
 
         A place can contain several tokens, can have transitions as inputs and outputs, but no places
     """
-    def __init__(self, name='', withoutPriority=False, tokName=None, exit=False):
-        super(Place, self).__init__(name=name)
+    def __init__(self, name='', logger=logging, withoutPriority=False, tokName=None, exit=False):
+        Node.__init__(self, name=name, logger=logger)
         self.token = []
         """ List of tokens currently on the place
         """
@@ -42,7 +45,7 @@ class Place(Node):
     def __str__(self):
         return '%s, %s token(s)' % (self.name, len(self.token))
 
-    def copy(place):
+    def copy(self):
         """ Make a copy of ``place`` using :func:`TimeToken.copy <petrinet_simulator.TimeToken.copy>`
 
         :param place: place to copy
@@ -50,17 +53,17 @@ class Place(Node):
 
         :returns: An instance of the class :class:`Place <petrinet_simulator.Place>`
         """
-        if not isinstance(place, Place):
-            raise TypeError('Place expected, got a %s instead' % place.__class__.__name__)
+        try:
+            # Create new place
+            pl = Place(self.name, self.withoutPriority, self.tokName, self.exit)
 
-        # Create new place
-        pl = Place(place.name, place.withoutPriority, place.tokName, place.exit)
+            # Adapte the list of tokens
+            for tok in self.token:
+                pl.token.append(tok.copy())
 
-        # Adapte the list of tokens
-        for tok in place.token:
-            pl.token.append(Token.copy(tok))
-
-        return pl
+            return pl
+        except:
+            return None
 
     def addToken(self, token):
         """Add a token to the place
@@ -70,10 +73,9 @@ class Place(Node):
 
         .. Warning:: We can NOT add twice the same token. In this case, to make a copy is necessary !
         """
-        if not isinstance(token, Token):
-            raise TypeError('Token expected, got a %s instead' % token.__class__.__name__)
+        assert token.__class__.__name__ == 'Token'
         if token in self.token:
-            print '** WARNING: Token %s already exists on the place %s' % (token.name, self.name)
+            self.logger.warning('Token %s already exists on the place %s' % (token.name, self.name))
 
         self.token.append(token)
         if self.withoutPriority:
@@ -95,7 +97,7 @@ class Place(Node):
             if token in self.token:
                 self.token.remove(token)
             else:
-                print "**WARNING** Try to remove a token that doesn't exist on place %s" % self.name
+                self.logger.warning("Try to remove a token that doesn't exist on place %s" % self.name)
 
     def setWithoutPriority(self, withoutPriority):
         """ Set a value to the class's attribute :attr:`withoutPriority <petrinet_simulator.Place.withoutPriority>`
@@ -103,9 +105,7 @@ class Place(Node):
             :param withoutPriority:
             :type withoutPriority: Boolean
         """
-        if not isinstance(withoutPriority, bool):
-            raise TypeError('Boolean expected, got a %s instead' % withoutPriority.__class__.__name__)
-
+        assert isinstance(withoutPriority, bool)
         self.withoutPriority = withoutPriority
 
     def setTokName(self, tokName):
@@ -114,8 +114,7 @@ class Place(Node):
             :param tokName:
             :type tokName: String
         """
-        if not isinstance(tokName, str):
-            raise TypeError('String expected, got a %s instead' % tokName.__class__.__name__)
+        assert isinstance(tokName, str)
         self.tokName = tokName
 
 
@@ -124,30 +123,30 @@ class TimePlace(TimeNode, Place):
         It herits from both class :class:`TimeNode <petrinet_simulator.TimeNode>`
         and :class:`Place <petrinet_simulator.Place>`
     """
-    def __init__(self, name='no name', time=0.0, withoutTime=False, withoutPriority=False, tokName=None, exit=False):
-        TimeNode.__init__(name=name, time=time)
-        Place.__init__(self, name=name, withoutPriority=withoutPriority, tokName=tokName, exit=exit)
+    def __init__(self, name='no name', logger=logging, time=0.0, withoutTime=False, withoutPriority=False, tokName=None,
+                 exit=False):
+        TimeNode.__init__(name=name, logger=logger, time=time)
+        Place.__init__(self, name=name, logger=logger, withoutPriority=withoutPriority, tokName=tokName, exit=exit)
         self.withoutTime = withoutTime
         """ If True, the token arriving on this place have to reinitialize
             :attr:`placeClocks <petrinet_simulator.TimeToken.placeClocks>`
         """
 
-    def copy(place):
-        if not isinstance(place, Place):
-            raise TypeError('Place expected, got a %s instead' % place.__class__.__name__)
+    def copy(self):
+        try:
+            # Create the new place
+            pl = TimePlace(self.name, self.time, self.withoutTime, self.withoutPriority, self.tokName, self.exit)
 
-        # Create the new place
-        pl = TimePlace(place.name, place.time, place.withoutTime, place.withoutPriority, place.tokName, place.exit)
+            # Adapte the token
+            for tok in self.token:
+                pl.token.append(tok.copy())
 
-        # Adapte the token
-        for tok in place.token:
-            pl.token.append(TimeToken.copy(tok))
-
-        return pl
+            return pl
+        except:
+            return None
 
     def addToken(self, token):
-        if not isinstance(token, TimeToken):
-            raise TypeError('TimeToken expected, got a %s instead' % token.__class__.__name__)
+        assert token.__class__.__name__ == 'TimeToken'
 
         Place.addToken(self, token)
         if self.withoutTime:
@@ -178,7 +177,5 @@ class TimePlace(TimeNode, Place):
             :param withoutTime:
             :type withoutTime: Boolean
         """
-        if not isinstance(withoutTime, bool):
-            raise TypeError('Boolean expected, got a %s instead' % withoutTime.__class__.__name__)
-
+        assert isinstance(withoutTime, bool)
         self.withoutTime = withoutTime
