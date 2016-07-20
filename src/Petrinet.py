@@ -655,18 +655,23 @@ class PetriNet:
             if self.isEnabled(t):
                 ets.setdefault(t, self.transitions[t])
 
-    def getEnabledToken(self, transition):
-        """ Add a documentation
+    def getEnabledToken(self, place, transition):
+        """ Get every enable token on upplaces regarding the given ``transition``
+
+            :param place: *
+            :type place: :class:`Place <Place.Place>`
+            :param transition: *
+            :type transition: :class:`Transition <Transition.Transition>`
+
+            :returns: generator ok tokens
         """
-        enabled_tokens = {}
-        for p in self.upplaces[transition].iterkeys():
-            # are there enough token on each place up
-            enabled_tokens[p] = []
-            for tok in p.token:
-                fire = tok.priority[p]['pref'] == 'time' and transition in tok.priority[p]['priority']
-                fire = fire or tok.priority.get(p) is None or transition == tok.priority[p]['priority'][0]
-                if tok.fire and fire:
-                    enabled_tokens[p].append(tok)
+        # are there enough token on each place up
+        enabled_tokens[p] = []
+        for tok in p.token:
+            is_firing = tok.priority[p]['pref'] == 'time' and transition in tok.priority[p]['priority']
+            is_firing = is_firing or tok.priority.get(p) is None or transition == tok.priority[p]['priority'][0]
+            if tok.fire and is_firing:
+                yield tok
 
     def isEnabled(self, transition):
         """ Compute if ``transition`` can fire. A transition can fire if:
@@ -689,8 +694,8 @@ class PetriNet:
             self.logger.warning("Transition %s doesn't exist in petriNet %s!" % (str(transition), self.name))
             return False
 
-        tokens = self.getEnabledToken(transition)
-        names = sum(map(lambda w: w.split('_'), sum(tokens.itervalues(), [])))  # names of enables tokens
+        tokens = sum([self.getEnabledToken(place, transition) for place in self.upplaces[transition].iterkeys()])
+        names = sum(map(lambda tok: tok.name.split('_'), tokens))  # names of enables tokens
 
         # Every name to the first list of transition.tokenQueue has to belong at least to one of the token on an upplace
         res = set(transition.tokenQueue[0]).issubset(names)
@@ -717,59 +722,111 @@ class PetriNet:
             .. Warning:: If there is NO input between ``place`` and ``transition``, the method return an empty list
         """
         if self.inputs.get(place) is None or self.inputs[place].get(transition) is None:
-            self.logger.warning("Place argument has no input with transition argument !")
+            self.logger.warning("Place %s has no input with transition %s !" % (str(place), str(transition)))
             return []
 
-        tokens = {}
+        # get token on place available for transition
+        tokens = self.getEnabledToken(place, transition) or iter([])
 
-        nb, tokens, times = self.inputs[place][transition], [], []
+        # introduce to list:
+        #   - list concerning the token that have to contain the name wanted by transition
+        #   - list with the strongest priority
+        name_first_tokens = {}
+        priority_tokens = []
 
-        i = 0
-        # first we add the token that must be fired by transition
-        if len(transition.tokenQueue) != 0:
-            toks_pr = []
-            for tok in transition.tokenQueue[0]:
-                toks_pr.append(tok)
-            for tok in place.token:
-                if tok.priority.get(place) is not None and transition in tok.priority[place]['priority'] and tok.fire:
-                    words = tok.name.split('_')
-                    for k in range(len(toks_pr)):
-                        tkn = toks_pr[k]
-                        if tkn in words:
-                            del toks_pr[k]
-                            tokens.append(tok)
-                            i += 1
-                            break
-            if len(toks_pr) != 0:
-                raise StandardError('available transition %s has not the available tokens up' % transition.name)
+        # counter to know if enough token up are available (concerning the name)
+        tokens_words = {}
 
-        while(i < nb):
-            # we search the token with the strongest priority
-            ind = sys.maxint
-            j = 0
-            token = None
-            for tok in place.token:
-            if(not tok in tokens and tok.priority.get(place) is not None and transition in tok.priority[place]['priority'] and tok.fire):
-                j += 1
-                #find the most priority transition and save the token
-                for tr in range(len(tok.priority[place]['priority'])):
-                if(tok.priority[place]['priority'][tr] == transition):
-                    if(ind > tr):
-                    ind = tr
-                    token = tok   
-            if(j == 0):
-            break
-            tokens.append(token)
-            i += 1
-        
-        for tok in place.token:
-            if(i == nb):
-            break
-            if(not tok in tokens and tok.fire):
-            tokens.append(tok)
-            i += 1
-        
-        if(i < nb):
-            raise StandardError('no enough available token on the place '+place.name+" for the enabled transition "+transition.name)
-        
-        return tokens
+        # We first sort the token by priority and save it with respect to their names
+        for token in tokens:
+            priority_value = self.get_priority_value(token)
+            tokens_words.setdefault(token, [])
+            for word in token.name.split('_'):
+                if word in transition.tokenQueue:
+                    name_first_tokens[word][token] = priority_value
+                    tokens_words[token].append(word)
+            i = 0
+            while True:
+                try:
+                    _, val = priority_tokens[i]
+                except:
+                    priority_tokens.append((token, priority_value))
+                    break
+                if val >= priority_value:
+                    priority_tokens.append((token, priority_value))
+                    break
+                i += 1
+
+        # Then we keep the most priority tokens iff it always exist at least a token for each required name
+        n, nb_priority = 0, self.inputs[place][transition] - len(name_first_tokens)
+        while n < nb_priority:
+            token, _ = priority_tokens[n]
+            for word in tokens_words[token]:
+                del name_first_tokens[word][token]
+                if not name_first_tokens[word]:
+                    name_first_tokens[word][token] = self.get_priority_value(token)
+                    del priority_tokens[n]
+                else:
+                    n += 1
+
+        for word, dct in name_first_tokens.iteritems():
+            yield dct.iterkeys().next()
+
+        for token in priority_tokens[:nb_priority]:
+            yield token
+
+        # tokens = {}
+
+        # nb, tokens, times = self.inputs[place][transition], [], []
+
+        # i = 0
+        # # first we add the token that must be fired by transition
+        # if len(transition.tokenQueue) != 0:
+        #     toks_pr = []
+        #     for tok in transition.tokenQueue[0]:
+        #         toks_pr.append(tok)
+        #     for tok in place.token:
+        #         if tok.priority.get(place) is not None and transition in tok.priority[place]['priority'] and tok.fire:
+        #             words = tok.name.split('_')
+        #             for k in range(len(toks_pr)):
+        #                 tkn = toks_pr[k]
+        #                 if tkn in words:
+        #                     del toks_pr[k]
+        #                     tokens.append(tok)
+        #                     i += 1
+        #                     break
+        #     if len(toks_pr) != 0:
+        #         raise StandardError('available transition %s has not the available tokens up' % transition.name)
+
+        # while(i < nb):
+        #     # we search the token with the strongest priority
+        #     ind = sys.maxint
+        #     j = 0
+        #     token = None
+        #     for tok in place.token:
+        #     if(not tok in tokens and tok.priority.get(place) is not None
+        #           and transition in tok.priority[place]['priority'] and tok.fire):
+        #         j += 1
+        #         #find the most priority transition and save the token
+        #         for tr in range(len(tok.priority[place]['priority'])):
+        #         if(tok.priority[place]['priority'][tr] == transition):
+        #             if(ind > tr):
+        #             ind = tr
+        #             token = tok
+        #     if(j == 0):
+        #     break
+        #     tokens.append(token)
+        #     i += 1
+
+        # for tok in place.token:
+        #     if(i == nb):
+        #     break
+        #     if(not tok in tokens and tok.fire):
+        #     tokens.append(tok)
+        #     i += 1
+
+        # if(i < nb):
+        #     raise StandardError('no enough available token '
+        #                         'on the place '+place.name+" for the enabled transition "+transition.name)
+
+        # return tokens
