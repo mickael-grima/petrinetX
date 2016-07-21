@@ -209,6 +209,22 @@ class Token:
             self.fireHeritance[transition].setdefault(place, [])
         self.fireHeritance[transition][place].append(str(tokenName))
 
+    def get_priority_value(self, place, transition):
+        """ Compute a priority value for ``token``. Given two tokens, the one with the biggest priority_value is fired first
+            if ``transition`` is not a priority for ``token`` on ``place``, we return 0
+
+            :param place: *
+            :type place: :class:`Place <Place.Place>`
+            :param transition: *
+            :type transition: :class:`Transition <Transition.Transition>`
+
+            :returns: A float bigger or equal to 0
+        """
+        try:
+            return 1.0 / (1.0 + self.priority[place]['priority'].index(transition))
+        except:
+            return 0
+
     def print_priority(self):
         """ Print the priorities of :attr:`priority <petrinet_simulator.Token.priority>`'s attribute
         """

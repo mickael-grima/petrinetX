@@ -666,10 +666,9 @@ class PetriNet:
             :returns: generator ok tokens
         """
         # are there enough token on each place up
-        enabled_tokens[p] = []
-        for tok in p.token:
-            is_firing = tok.priority[p]['pref'] == 'time' and transition in tok.priority[p]['priority']
-            is_firing = is_firing or tok.priority.get(p) is None or transition == tok.priority[p]['priority'][0]
+        for tok in place.token:
+            is_firing = tok.priority[place]['pref'] == 'time' and transition in tok.priority[place]['priority']
+            is_firing = is_firing or tok.priority.get(place) is None or transition == tok.priority[place]['priority'][0]
             if tok.fire and is_firing:
                 yield tok
 
@@ -709,8 +708,8 @@ class PetriNet:
     # return a sequence of token with the right priority and the right number of token,
     # sorted considering the tokens clocks
     def getSortedEnableToken(self, place, transition):
-        """ Compute a list of token's that belong to ``place`` enable for ``transition``
-            This list is sorted regarding the clock's and the minimumStartingTime of each token
+        """ Compute a generator of token's that belong to ``place`` enable for ``transition``
+            This generator is sorted regarding the clock's and the minimumStartingTime of each token
             The first criteria to order the tokens is **the appartenance to
             transition.**:attr:`tokenQueue <petrinet_simulator.Transition.tokenQueue>`, the second is **the time**
 
@@ -719,7 +718,7 @@ class PetriNet:
             :param transition: *
             :type transition: :class:`Transition <petrinet_simulator.Transition>`
 
-            .. Warning:: If there is NO input between ``place`` and ``transition``, the method return an empty list
+            .. Warning:: If there is NO input between ``place`` and ``transition``, the method return an empty generator
         """
         if self.inputs.get(place) is None or self.inputs[place].get(transition) is None:
             self.logger.warning("Place %s has no input with transition %s !" % (str(place), str(transition)))
@@ -739,20 +738,21 @@ class PetriNet:
 
         # We first sort the token by priority and save it with respect to their names
         for token in tokens:
-            priority_value = self.get_priority_value(token)
+            priority_value = token.get_priority_value(place, transition)
             tokens_words.setdefault(token, [])
             for word in token.name.split('_'):
                 if word in transition.tokenQueue:
                     name_first_tokens[word][token] = priority_value
                     tokens_words[token].append(word)
             i = 0
+            # Insert the token in the list. Make sure that the list is sorted
             while True:
                 try:
                     _, val = priority_tokens[i]
                 except:
                     priority_tokens.append((token, priority_value))
                     break
-                if val >= priority_value:
+                if val <= priority_value:
                     priority_tokens.append((token, priority_value))
                     break
                 i += 1
@@ -764,7 +764,7 @@ class PetriNet:
             for word in tokens_words[token]:
                 del name_first_tokens[word][token]
                 if not name_first_tokens[word]:
-                    name_first_tokens[word][token] = self.get_priority_value(token)
+                    name_first_tokens[word][token] = token.get_priority_value(place, transition)
                     del priority_tokens[n]
                 else:
                     n += 1
@@ -775,58 +775,124 @@ class PetriNet:
         for token in priority_tokens[:nb_priority]:
             yield token
 
-        # tokens = {}
+    def enabledTransitionsSet(self):
+        """ Build the set of enabled transitions
 
-        # nb, tokens, times = self.inputs[place][transition], [], []
+            :returns: A dictionnary :class:`Transition <petrinet_simulator.Transition>`: int
+        """
+        result = {t: c for t, c in self.transitions.iteritems() if self.isEnabled(t)}
+        return result
 
-        # i = 0
-        # # first we add the token that must be fired by transition
-        # if len(transition.tokenQueue) != 0:
-        #     toks_pr = []
-        #     for tok in transition.tokenQueue[0]:
-        #         toks_pr.append(tok)
-        #     for tok in place.token:
-        #         if tok.priority.get(place) is not None and transition in tok.priority[place]['priority'] and tok.fire:
-        #             words = tok.name.split('_')
-        #             for k in range(len(toks_pr)):
-        #                 tkn = toks_pr[k]
-        #                 if tkn in words:
-        #                     del toks_pr[k]
-        #                     tokens.append(tok)
-        #                     i += 1
-        #                     break
-        #     if len(toks_pr) != 0:
-        #         raise StandardError('available transition %s has not the available tokens up' % transition.name)
+    def adapteEnabledTransitionsSet(self, transitions, ets):
+        n = 0
+        for t in transitions:
+            is_enabled = self.isEnabled(t)
+            if t in ets and not is_enabled:
+                del ets[t]
+                n += 1
+            if t not in ets and is_enabled:
+                ets.setdefault(t, self.transitions[t])
+                n += 1
+        return n
 
-        # while(i < nb):
-        #     # we search the token with the strongest priority
-        #     ind = sys.maxint
-        #     j = 0
-        #     token = None
-        #     for tok in place.token:
-        #     if(not tok in tokens and tok.priority.get(place) is not None
-        #           and transition in tok.priority[place]['priority'] and tok.fire):
-        #         j += 1
-        #         #find the most priority transition and save the token
-        #         for tr in range(len(tok.priority[place]['priority'])):
-        #         if(tok.priority[place]['priority'][tr] == transition):
-        #             if(ind > tr):
-        #             ind = tr
-        #             token = tok
-        #     if(j == 0):
-        #     break
-        #     tokens.append(token)
-        #     i += 1
+    def isBlocked(self):
+        """ Compute if the there still are enabled transitions or Note
 
-        # for tok in place.token:
-        #     if(i == nb):
-        #     break
-        #     if(not tok in tokens and tok.fire):
-        #     tokens.append(tok)
-        #     i += 1
+            :returns: A boolean
+        """
+        for t, c in self.transitions.iteritems():
+            if self.isEnabled(t):
+                return False
+        return True
 
-        # if(i < nb):
-        #     raise StandardError('no enough available token '
-        #                         'on the place '+place.name+" for the enabled transition "+transition.name)
+    def isInStructuralConflict(self, transition1, transition2):
+        """ Check if ``transition1`` and ``transition2`` are in structural conflict,
+            i.e. one token or more can be fired by both transitions
 
-        # return tokens
+            :param transition1: *
+            :type transition1: :class:`Transition <petrinet_simulator.Transition>`
+            :param transition2: *
+            :type transition2: :class:`Transition <petrinet_simulator.Transition>`
+
+            :returns: A boolean
+        """
+        if self.upplaces.get(transition1) is not None:
+            for p, nb in self.upplaces[transition1].iteritems():
+                if self.upplaces.get(transition2) is not None and p in self.upplaces[transition2]:
+                    return True
+        return False
+
+    def isAllInStructuralConflict(self, transitions):
+        """ Check if each transition in ``transitions`` is not in structural conflict with an other one.
+
+            :param transitions: *
+            :type transitions: List, dict or tuple
+        """
+        for tr1 in transitions:
+            for tr2 in transitions:
+                if tr1 != tr2 and self.isInStructuralConflict(tr1, tr2):
+                    return True
+        return False
+
+    def isInBehavioralConflict(self, transition1, transition2):
+        """ Check if ``transition1`` and ``transition2`` are in behavioral conflict,
+            i.e. both transitions are enable but there are not enough tokens on places up
+            in order to activate both transitions
+
+            :param transition1: *
+            :type transition1: :class:`Transition <petrinet_simulator.Transition>`
+            :param transition2: *
+            :type transition2: :class:`Transition <petrinet_simulator.Transition>`
+
+            :returns: A boolean
+        """
+        b = True
+        for p, nb in self.token.iteritems():
+            b = b and nb >= (self.inputs[p][transition1] + self.inputs[p][transition2])
+        return (not b and self.isEnabled(transition1) and self.isEnabled(transition2))
+
+    def isAllInBehavioralConflict(self, transitions):
+        """ Check if each transition in ``transitions`` is not in behavioral conflict with an other one.
+
+            :param transitions: *
+            :type transitions: List, dict or tuple
+        """
+        for tr1 in transitions:
+            for tr2 in transitions:
+                if tr1 != tr2 and self.isInBehavioralConflict(tr1, tr2):
+                    return True
+        return False
+
+    def conflictPlaces(self, transition1, transition2):
+        """ Compute the places that are shared by both ``transition1`` and ``transition2``
+
+            :param transition1: *
+            :type transition1: :class:`Transition <petrinet_simulator.Transition>`
+            :param transition2: *
+            :type transition2: :class:`Transition <petrinet_simulator.Transition>`
+
+            :returns: Dictionnary :class:`Place <petrinet_simulator.Place>`: int
+        """
+        places = {}
+
+        if self.upplaces.get(transition1) is not None:
+            for p1, nb1 in self.upplaces[transition1].iteritems():
+                if self.upplaces.get(transition2) is not None and p1 in self.upplaces[transition2]:
+                    places.setdefault(p1, nb1)
+
+        return places
+
+    def AllConflictPlaces(self, transitions):
+        """ Compute all the conflict places between each couple of transitions in ``transitions``
+
+            :param transitions: *
+            :type transitions: List, dict or tuple
+
+            :returns: Dictionnary :class:`Place <petrinet_simulator.Place>`: int
+        """
+        places = {}
+        if isinstance(transitions, list) or isinstance(transitions, dict) or isinstance(transitions, tuple):
+            for t1 in transitions:
+                for t2 in transitions:
+                    places.update(self.conflictPlaces(t1, t2))
+        return places
