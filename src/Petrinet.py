@@ -11,8 +11,8 @@ sys.path.append("/home/mickael/Documents/projects/petrinetX/src/")
 from Token import Token
 from Place import Place
 from Transition import Transition
+from utils.tools import pref_funct
 import logging
-import itertools
 
 
 class PetriNet:
@@ -896,3 +896,157 @@ class PetriNet:
                 for t2 in transitions:
                     places.update(self.conflictPlaces(t1, t2))
         return places
+
+    def mostPriorityTransition(self, *transitions):
+        """ For each transition in ``transitions``, we keep the one that has the biggest preference compute using
+            the method :func:`pref <petrinet_simulator.PetriNet.pref>`
+
+            :param transitions: *
+            :type transitions: List, dict or tuple
+
+            :returns: An object of class :class:`Transition <petrinet_simulator.Transition>`
+                      or None if no transition are found
+        """
+        try:
+            return sorted(transitions, key=self.pref)[-1]
+        except:
+            return None
+
+    def pref(self, transition):
+        """ The preference of ``transition`` is computed following these steps:
+                * We consider the tokens up to ``transition`` and enabled for ``transition`` using the method
+                  :func:`getEnableToken <petrinet_simulator.PetriNet.getEnableToken>`
+                * For each token above we compute the position ``ind`` of ``transition`` in
+                  :attr:`token.priority <petrinet_simulator.Token.priority>`
+                * We apply the method :func:`pref_func <petrinet_simulator.Tools.pref_func>`
+                  that compute a value for ``ind``
+                * We sum all the given value and we return the average
+
+            :param transition: *
+            :type transition: :class:`Transition <petrinet_simulator.Transition>`
+
+            :returns: A float
+        """
+        result = []
+        if self.upplaces.get(transition) is not None:
+            for p, n in self.upplaces[transition].iteritems():
+                for tok in self.getEnableToken(p, transition):
+                    if tok.priority.get(p) is not None:
+                        result.extend(map(
+                            lambda tr: pref_funct(tok.priority[p]['priority'].index(tr)),
+                            filter(lambda tr: tr == transition, tok.priority[p]['priority'])
+                        ))
+
+        return sum(result) / len(result) if result else 0.0
+
+    # -------------------------------------------------------
+    # -------------- representation functions ---------------
+    # -------------------------------------------------------
+
+    def __adaptePetriNet(self, transition, ets):
+        tok_save, transitions_save = [], {}
+
+        # save the previous token and remove the token that were fired
+        if self.upplaces.get(transition) is not None:
+            for p in self.upplaces[transition].iterkeys():
+                for tok in self.getSortedEnableToken(p, transition):
+                    tok_save.append(tok)
+                    self.removeToken(p, tok)
+                transitions_save.update(self.inputs.get(p) or {})
+
+        # If a transition is not enabled anymore then its clock is reinitialized
+        for t in transitions_save.iterkeys():
+            if ets.get(t) and not self.isEnabled(t):
+                del ets[t]
+
+        # we remove the token of transition.tokenQueue
+        if transition.tokenQueue:
+            del transition.tokenQueue[0]
+
+        # We adapte the tokenQueue of targeted transitions
+        if transition.tokenQueueAfterFire:
+            for tkk, dct in transition.tokenQueueAfterFire[0].iteritems():
+                tkk_save = [t for t in tkk]
+
+                # if all tokens in tkk are in the firing token, then we apply the token queue after fire
+                # TODO: PROBLEM HERE !!!!!!!!!!!!!!!!
+                for tok in tok_save:
+                    i = 0
+                    while i < len(tkk_save):
+                        tkn = tkk_save[i]
+                        if tkn in tok.name.split('_'):
+                            del tkk_save[i]
+                            continue
+                        i += 1
+                    if not tkk_save:
+                        break
+
+                for tr, attr in dct.iteritems():
+                    for i in range(len(attr['tokenQueue'])):
+                        tokenNames = []
+                        for tkn in attr['tokenQueue'][i]:
+                            tokenNames.append(tkn)
+                        self.insertTokenQueue(tr, tokenNames, place_presence=attr['place_presence'],
+                                              nb_tok=attr['nb_tok'])
+            del transition.tokenQueueAfterFire[0]
+
+        # create the token after the fire
+        token = self.__tokenAfterFire(transition, ets, tok_save)
+
+        transitions_save = {}
+        # Add token to places after the transition that fired
+        if self.downplaces.get(transition) is not None:
+            for p, n in self.downplaces[transition].iteritems():
+                for i in range(n):
+                    self.addToken(p, token.copy())
+            if self.inputs.get(p) is not None:
+                for t, n in self.inputs[p].iteritems():
+                    transitions_save.setdefault(t, n)
+
+        # If a transition is enabled we add it to ets
+        for t, c in transitions_save.iteritems():
+            if ets.get(t) is None and self.isEnabled(t):
+                ets.setdefault(t, c)
+
+    def __tokenAfterFire(self, transition, ets, tok_save):
+        # create the token that has the properties of every previous token
+        tok, names = Token(), set()
+        for t in tok_save:
+            # we keep the intersection of each priority
+            for p, attr in t.priority.iteritems():
+                if attr['pref'] == 'priority':
+                    del attr['priority'][0]
+                    tok.addPriority(p, attr['priority'], attr['pref'])
+            # save the name of tokens
+            names.update(t.name.split('_') if t.name != 'no name' and t.name != '' else [])
+        tok.name = '_'.join(names) or 'no name'
+
+        if tok.name == 'no name':
+            for p, attr in tok.priority.iteritems():
+                if not attr['priority']:
+                    del tok.priority[p]
+
+        # priority after fire
+        for t in tok_save:
+            for tr, dic in t.priorityAfterFire.iteritems():
+                if tr == transition:
+                    for loc, prt in dic.iteritems():
+                        if loc == 'self':
+                            for pl, attr in prt.iteritems():
+                                tok.addPriority(pl, attr['priority'], pref=attr['pref'])
+                        else:
+                            for token in loc[0].token:
+                                if loc[1] in token.name.split('_'):
+                                    for pl, trs in prt.iteritems():
+                                        token.addPriority(pl, trs)
+                else:
+                    for loc, prt in dic.iteritems():
+                        for pl, attr in prt.iteritems():
+                            tok.addPriorityAfterFire(tr, {pl: attr['priority']}, location=loc, pref=attr['pref'])
+            if t.fireHeritance.get(transition) is not None:
+                for pl, ts in t.fireHeritance[transition].iteritems():
+                    for tt in pl.token:
+                        if tt.name in ts:
+                            if not tt.fire:
+                                self.changeFireToken(pl, tt, ets)
+        return tok
