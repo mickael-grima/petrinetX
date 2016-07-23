@@ -518,12 +518,20 @@ class PetriNet:
 
             * options:
 
-              * ``tokens = {}``: Tokens to add in the petrinet. For each place has to be associated a list, dict or tuple of :class:`TimeToken <petrinet_simulator.TimeToken>`
+              * ``tokens = {}``: Tokens to add in the petrinet. For each place has to be associated a list, dict or
+                                 tuple of :class:`TimeToken <petrinet_simulator.TimeToken>`
 
             .. Note:: ``inputs`` and ``outputs`` can have several types:
 
-                * *List* or *tuple*: In this case they are represented by a matrix whose range represents ``transitions`` and lines ``places``. The range j and the line i give the output or input between the transition whose associated number in :attr:`self.transitions <petrinet_simulator.PetriNet.transitions>` is j and ``place`` whose associated number in :attr:`self.places <petrinet_simulator.PetriNet.places>` is i.
-                * *Dict*: In this case they must have the same form as :attr:`self.transitions <petrinet_simulator.PetriNet.transitions>` and :attr:`self.places <petrinet_simulator.PetriNet.places>`.
+                * *List* or *tuple*: In this case they are represented by a matrix whose range represents
+                                     ``transitions`` and lines ``places``. The range j and the line i give the output or
+                                     input between the transition whose associated number in
+                                     :attr:`self.transitions <petrinet_simulator.PetriNet.transitions>` is j and
+                                     ``place`` whose associated number in
+                                     :attr:`self.places <petrinet_simulator.PetriNet.places>` is i.
+                * *Dict*: In this case they must have the same form as
+                          :attr:`self.transitions <petrinet_simulator.PetriNet.transitions>` and
+                          :attr:`self.places <petrinet_simulator.PetriNet.places>`.
 
             **Example:**
 
@@ -630,6 +638,32 @@ class PetriNet:
     # -------------------------------------------------------
     # --------------- other functions -----------------------
     # -------------------------------------------------------
+
+    # TODO to adapte, to document
+    def reachabilityGraph(self, initialToken):
+        graph = {}
+        visited = {}
+        queue = [initialToken]
+        while len(queue) > 0:
+            token = queue[0]
+            visited.setdefault(tuple(token), token)
+            queue.remove(token)
+            ets = self.enabledTransitionsSet(token)
+            neighbours = {}
+            for t, c in ets.iteritems():
+                tk = self.fire(t, token)
+                neighbours.setdefault(t, tk)
+                b = True
+                for c, v in visited.iteritems():
+                    b2 = False
+                    for i in range(len(tk)):
+                        if(tk[i] != v[i]):
+                            b2 = True
+                    b = b and b2
+                if b is True:
+                    queue.append(tk)
+            graph.setdefault(tuple(token), neighbours)
+        return graph
 
     def changeFireToken(self, place, token, ets):
         """ Change the attribute :attr:`fire <petrinet_simulator.TimeToken.fire>` of ``token`` and adapte the enable
@@ -1050,3 +1084,73 @@ class PetriNet:
                             if not tt.fire:
                                 self.changeFireToken(pl, tt, ets)
         return tok
+
+    def computeFiringTransition(self, ets):
+        """ Among the given transitions in ``ets``, this method compute the next transition to fire regarding priority,
+            preference and time (only for :class:`TimedPetriNet <petrinet_simulator.TimedPetriNet>`)
+
+            :param ets: set of enabled transitions
+            :type ets: dict
+
+            :returns: an object of class :class:`Transition <petrinet_simulator.Transition>`
+
+            .. Note:: To create ets we can invoque the method
+                      :func:`enabledTransitionsSet <petrinet_simulator.PetriNet.enabledTransitionsSet>`
+        """
+        return self.mostPriorityTransition(*ets.iterkeys())
+
+    def fire(self, transition, ets):
+        """ Execute the firing of ``transition``, adapte ``ets`` and all places and tokens in the PetriNet
+
+            :param transition: transition that fired
+            :type transition: :class:`Transition <petrinet_simulator.Transition>`
+            :param ets: set of enabled transitions
+            :type ets: dict
+
+            .. Warning:: ``ets`` must contain only enable transitions, otherwise an Error can be raised
+        """
+        # adapte the places
+        self.__adaptePetriNet(transition, ets)
+
+    def oneFireSimulation(self, ets):
+        """ Compute the next firing transition and execute the firing: the two methods called are
+            :func:`computeFiringTransition <petrinet_simulator.PetriNet.computeFiringTransition>` and
+            :func:`fire <petrinet_simulator.PetriNet.fire>`
+
+            :param ets: set of enabled transitions
+            :type ets: dict
+
+            :returns: an object of class :class:`Transition <petrinet_simulator.Transition>`
+        """
+        # compute the minimum of time for enabled transitions, and choose the transition
+        transition = self.mostPriorityTransition(*ets.iterkeys())
+
+        # fire and adapte each clocks
+        self.fire(transition, ets)
+
+        # we return the new token
+        return transition
+
+    def simulation(self, show=True, niter=float('nan')):
+        if not isinstance(show, bool):
+            raise TypeError('Boolean expected, got a %s instead' % show.__class__.__name__)
+
+        if show:
+            print 'beginning of the simulation'
+            print ''
+
+        if self.initialState == {}:
+            self.setInitialState()
+            ets = self.enabledTransitionsSet()
+
+        n = 0
+        while len(ets) != 0 and not n >= niter:
+            transition = self.oneFireSimulation(ets)
+            n += 1
+
+            if transition.show and show:
+                print transition.name + ' fired'
+                print ''
+
+        if show:
+            print 'end of the simulation'
