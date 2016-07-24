@@ -11,7 +11,7 @@ sys.path.append("/home/mickael/Documents/projects/petrinetX/src/")
 from Token import Token
 from Place import Place
 from Transition import Transition
-from utils.tools import pref_funct
+from utils.tools import pref_func
 import logging
 
 
@@ -739,9 +739,22 @@ class PetriNet:
 
         return res
 
+    def getPrioritySortedToken(self, place, transition):
+        priority_tokens = []
+        for token in self.getEnabledToken(place, transition):
+            priority_value, i = token.get_priority_value(place, transition), 0
+            # Insert the token in the list. Make sure that the list is sorted
+            while i < len(priority_tokens):
+                if priority_tokens[i][1] <= priority_value:
+                    break
+                i += 1
+            priority_tokens.append((token, priority_value))
+        for token, _ in priority_tokens:
+            yield token
+
     # return a sequence of token with the right priority and the right number of token,
     # sorted considering the tokens clocks
-    def getSortedEnableToken(self, place, transition):
+    def getSortedNextFiredToken(self, place, transition):
         """ Compute a generator of token's that belong to ``place`` enable for ``transition``
             This generator is sorted regarding the clock's and the minimumStartingTime of each token
             The first criteria to order the tokens is **the appartenance to
@@ -758,50 +771,35 @@ class PetriNet:
             self.logger.warning("Place %s has no input with transition %s !" % (str(place), str(transition)))
             return []
 
-        # get token on place available for transition
-        tokens = self.getEnabledToken(place, transition) or iter([])
-
-        # introduce to list:
+        # introduce two list:
         #   - list concerning the token that have to contain the name wanted by transition
         #   - list with the strongest priority
         name_first_tokens = {}
-        priority_tokens = []
+        priority_tokens = self.getPrioritySortedToken(place, transition)
 
         # counter to know if enough token up are available (concerning the name)
         tokens_words = {}
 
         # We first sort the token by priority and save it with respect to their names
-        for token in tokens:
-            priority_value = token.get_priority_value(place, transition)
+        for token in self.getEnabledToken(place, transition):
             tokens_words.setdefault(token, [])
             for word in token.name.split('_'):
                 if word in transition.tokenQueue:
-                    name_first_tokens[word][token] = priority_value
+                    name_first_tokens.setdefault(word, set())
+                    name_first_tokens[word].add(token)
                     tokens_words[token].append(word)
-            i = 0
-            # Insert the token in the list. Make sure that the list is sorted
-            while True:
-                try:
-                    _, val = priority_tokens[i]
-                except:
-                    priority_tokens.append((token, priority_value))
-                    break
-                if val <= priority_value:
-                    priority_tokens.append((token, priority_value))
-                    break
-                i += 1
 
         # Then we keep the most priority tokens iff it always exist at least a token for each required name
-        n, nb_priority = 0, self.inputs[place][transition] - len(name_first_tokens)
+        N = len(name_first_tokens)
+        n, nb_priority = 0, self.inputs[place][transition] - N
         while n < nb_priority:
-            token, _ = priority_tokens[n]
-            for word in tokens_words[token]:
-                del name_first_tokens[word][token]
-                if not name_first_tokens[word]:
-                    name_first_tokens[word][token] = token.get_priority_value(place, transition)
-                    del priority_tokens[n]
-                else:
+            token = priority_tokens[n]
+            if set.intersection(name_first_tokens.itervalues()).difference([token]) >= N:
+                for word in tokens_words[token]:
+                    name_first_tokens[word].remove(token)
                     n += 1
+            else:
+                del priority_tokens[n]
 
         for word, dct in name_first_tokens.iteritems():
             yield dct.iterkeys().next()
@@ -814,8 +812,7 @@ class PetriNet:
 
             :returns: A dictionnary :class:`Transition <petrinet_simulator.Transition>`: int
         """
-        result = {t: c for t, c in self.transitions.iteritems() if self.isEnabled(t)}
-        return result
+        return {t: c for t, c in self.transitions.iteritems() if self.isEnabled(t)}
 
     def adapteEnabledTransitionsSet(self, transitions, ets):
         n = 0
@@ -949,7 +946,7 @@ class PetriNet:
     def pref(self, transition):
         """ The preference of ``transition`` is computed following these steps:
                 * We consider the tokens up to ``transition`` and enabled for ``transition`` using the method
-                  :func:`getEnableToken <petrinet_simulator.PetriNet.getEnableToken>`
+                  :func:`getSortedNextFiredToken <petrinet_simulator.PetriNet.getSortedNextFiredToken>`
                 * For each token above we compute the position ``ind`` of ``transition`` in
                   :attr:`token.priority <petrinet_simulator.Token.priority>`
                 * We apply the method :func:`pref_func <petrinet_simulator.Tools.pref_func>`
@@ -964,10 +961,10 @@ class PetriNet:
         result = []
         if self.upplaces.get(transition) is not None:
             for p, n in self.upplaces[transition].iteritems():
-                for tok in self.getEnableToken(p, transition):
+                for tok in self.getSortedNextFiredToken(p, transition):
                     if tok.priority.get(p) is not None:
                         result.extend(map(
-                            lambda tr: pref_funct(tok.priority[p]['priority'].index(tr)),
+                            lambda tr: pref_func(tok.priority[p]['priority'].index(tr)),
                             filter(lambda tr: tr == transition, tok.priority[p]['priority'])
                         ))
 
@@ -983,7 +980,7 @@ class PetriNet:
         # save the previous token and remove the token that were fired
         if self.upplaces.get(transition) is not None:
             for p in self.upplaces[transition].iterkeys():
-                for tok in self.getSortedEnableToken(p, transition):
+                for tok in self.getSortedNextFiredToken(p, transition):
                     tok_save.append(tok)
                     self.removeToken(p, tok)
                 transitions_save.update(self.inputs.get(p) or {})

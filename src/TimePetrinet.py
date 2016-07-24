@@ -9,6 +9,7 @@ import sys
 sys.path.append("/home/mickael/Documents/projects/petrinetX/src/")
 
 from Petrinet import PetriNet
+from Place import Place
 import logging
 
 
@@ -101,3 +102,100 @@ class TimePetriNet(PetriNet):
         pn.startDate = self.startDate
 
         return pn
+
+    # ---------------------------------------------------------------
+    # -------------------  BUILDING FUNCTIONS -----------------------
+    # ---------------------------------------------------------------
+
+    def addToken(self, place, *tokens):
+        if not isinstance(place, Place):
+            raise TypeError('Place expected, got a %s instead' % place.__class__.__name__)
+        if self.places.get(place) is None:
+            self.logger.warning("Try to add a token to the inexistant place %s" % place.name)
+
+        else:
+            for token in tokens:
+                try:
+                    place.addToken(token)
+                except:
+                    continue
+
+                if self.inputs.get(place) is not None:
+                    for t in self.inputs[place].iterkeys():
+                        token.addTransitionClock(t, t.getTransitionTime())
+                        token.tclock[t] = token.transitionClocks[t]
+                        token.addMinimumStartingTime(t, t.minimumStartingTime)
+                if self.token.get(place) is None:
+                    self.token.setdefault(place, 1)
+                else:
+                    self.token[place] += 1
+
+    def savePlaces(self):
+        for p in self.places.iterkeys():
+            self.initialState.setdefault(p, [tok.copy() for tok in p.token])
+
+    def setInitialState(self):
+        self.savePlaces()
+        self.saveTransitions()
+        self.initialState.setdefault('initialClock', self.currentClock)
+
+    def reinitialized(self):
+        if len(self.initialState) != 0:
+            for p in self.places.iterkeys():
+                while p.token:
+                    self.removeToken(p, p.token[0])
+                for tok in self.initialState[p]:
+                    self.addToken(p, tok)
+            for t in self.transitions.iterkeys():
+                t.tokenQueue = []
+                t.tokenQueueAfterFire = []
+                if self.initialState.get(t) is not None:
+                    if self.initialState[t].get('tokenQueue'):
+                        t.tokenQueue = self.initialState[t]['tokenQueue']
+                    if self.initialState[t].get('tokenQueueAfterFire'):
+                        t.tokenQueueAfterFire = self.initialState[t]['tokenQueueAfterFire']
+            self.currentClock = self.initialState['initialClock']
+            self.initialState = {}
+
+    # ---------------------------------------------------------------
+    # ----------------------  OTHER FUNCTIONS -----------------------
+    # ---------------------------------------------------------------
+
+    def optimalTimeEts(self, ets, duration=sys.maxint):
+        """ Among the transitions in ``est``, compute the transition whose firing time is the minimal one.
+
+            :param ets: set of enabled transitions
+            :type ets: dict
+
+            * options:
+                * ``duration = sys.maxint``: if the minimal duration above is higher than ``duration``,
+                                             then we return an empty list
+
+            :returns: A list of objects :class:`Transition <petrinet_simulator.Transition>`
+        """
+        # compute the minimum of time for enabled transitions, and choose the transitions
+        duration_, transitions, maxDuration = sys.maxint, [], {}
+
+        for t, c in ets.iteritems():
+            mx = 0.0
+
+            # for each t we compute the maximum time of the places before
+            if self.upplaces.get(t) is not None:
+                for p, nb in self.upplaces[t].iteritems():
+                    toks = self.getSortedNextFiredToken(p, t)
+                    delta = toks[-1].minimumStartingTime.get(t, - sys.maxint - 1) - self.currentClock
+                    mx = max(mx, delta, toks[-1].pclock) + toks[-1].tclock[t]
+
+            # we save the duration before the firing of transition t
+            maxDuration.setdefault(t, mx)
+
+            # duration before the first firing
+            if duration_ >= mx:
+                duration_ = mx
+
+        # we collect the transitions that can fire at the same minimal time duration
+        for t, d in maxDuration.iteritems():
+            if d <= duration and d == duration_:
+                transitions.append(t)
+
+        return transitions, duration_

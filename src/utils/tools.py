@@ -6,13 +6,12 @@ Created on Thu Jul 21 21:38:37 2016
 """
 
 
-# the lowest is ind or clock, the highest is the function
-def pref_funct(ind):
-    """ Higher ``ind`` is, lower the result is
+def pref_func(x):
+    """ Higher ``x`` is, lower the result is
 
-        :param ind: *
-        :type ind: int, long or float
+        :param x: *
+        :type x: int, long or float
 
         :returns: float
     """
-    return 10.0 / (1 + ind)
+    return 10.0 / (1.0 + x)
