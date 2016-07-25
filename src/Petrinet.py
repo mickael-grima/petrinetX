@@ -237,11 +237,14 @@ class PetriNet:
 
                 * ``i = -1`` : see the method :func:`insertTokenQueue <petrinet_simulator.Transition.insertTokenQueue>`
 
-                * ``new_dct_tkn = False`` : see the method :func:`insertTokenQueue <petrinet_simulator.Transition.insertTokenQueue>`
+                * ``new_dct_tkn = False`` : see the method
+                            :func:`insertTokenQueue <petrinet_simulator.Transition.insertTokenQueue>`
 
-                * ``place_presence = False`` : see the attribute :attr:`tokenQueueAfterFire <petrinet_simulator.Transition.tokenQueueAfterFire>`
+                * ``place_presence = False`` : see the attribute
+                            :attr:`tokenQueueAfterFire <petrinet_simulator.Transition.tokenQueueAfterFire>`
 
-                * ``nb_tok = -1`` : see the attribute :attr:`tokenQueueAfterFire <petrinet_simulator.Transition.tokenQueueAfterFire>`
+                * ``nb_tok = -1`` : see the attribute
+                            :attr:`tokenQueueAfterFire <petrinet_simulator.Transition.tokenQueueAfterFire>`
 
             .. Note:: tokenNames can have several types:
 
@@ -974,7 +977,7 @@ class PetriNet:
     # -------------- representation functions ---------------
     # -------------------------------------------------------
 
-    def __adaptePetriNet(self, transition, ets):
+    def __fireToken(self, transition, ets):
         tok_save, transitions_save = [], {}
 
         # save the previous token and remove the token that were fired
@@ -990,6 +993,9 @@ class PetriNet:
             if ets.get(t) and not self.isEnabled(t):
                 del ets[t]
 
+        return tok_save
+
+    def __updateTokenQueue(self, transition, fired_tokens):
         # we remove the token of transition.tokenQueue
         if transition.tokenQueue:
             del transition.tokenQueue[0]
@@ -1000,8 +1006,7 @@ class PetriNet:
                 tkk_save = [t for t in tkk]
 
                 # if all tokens in tkk are in the firing token, then we apply the token queue after fire
-                # TODO: PROBLEM HERE !!!!!!!!!!!!!!!!
-                for tok in tok_save:
+                for tok in fired_tokens:
                     i = 0
                     while i < len(tkk_save):
                         tkn = tkk_save[i]
@@ -1013,50 +1018,12 @@ class PetriNet:
                         break
 
                 for tr, attr in dct.iteritems():
-                    for i in range(len(attr['tokenQueue'])):
-                        tokenNames = []
-                        for tkn in attr['tokenQueue'][i]:
-                            tokenNames.append(tkn)
-                        self.insertTokenQueue(tr, tokenNames, place_presence=attr['place_presence'],
+                    for tab in attr['tokenQueue']:
+                        self.insertTokenQueue(tr, [el for el in tab], place_presence=attr['place_presence'],
                                               nb_tok=attr['nb_tok'])
             del transition.tokenQueueAfterFire[0]
 
-        # create the token after the fire
-        token = self.__tokenAfterFire(transition, ets, tok_save)
-
-        transitions_save = {}
-        # Add token to places after the transition that fired
-        if self.downplaces.get(transition) is not None:
-            for p, n in self.downplaces[transition].iteritems():
-                for i in range(n):
-                    self.addToken(p, token.copy())
-            if self.inputs.get(p) is not None:
-                for t, n in self.inputs[p].iteritems():
-                    transitions_save.setdefault(t, n)
-
-        # If a transition is enabled we add it to ets
-        for t, c in transitions_save.iteritems():
-            if ets.get(t) is None and self.isEnabled(t):
-                ets.setdefault(t, c)
-
-    def __tokenAfterFire(self, transition, ets, tok_save):
-        # create the token that has the properties of every previous token
-        tok, names = Token(), set()
-        for t in tok_save:
-            # we keep the intersection of each priority
-            for p, attr in t.priority.iteritems():
-                if attr['pref'] == 'priority':
-                    del attr['priority'][0]
-                    tok.addPriority(p, attr['priority'], attr['pref'])
-            # save the name of tokens
-            names.update(t.name.split('_') if t.name != 'no name' and t.name != '' else [])
-        tok.name = '_'.join(names) or 'no name'
-
-        if tok.name == 'no name':
-            for p, attr in tok.priority.iteritems():
-                if not attr['priority']:
-                    del tok.priority[p]
-
+    def __updateAdvancedProperties(self, tok, transition, tok_save, ets):
         # priority after fire
         for t in tok_save:
             for tr, dic in t.priorityAfterFire.iteritems():
@@ -1080,7 +1047,41 @@ class PetriNet:
                         if tt.name in ts:
                             if not tt.fire:
                                 self.changeFireToken(pl, tt, ets)
+
+    def __getTokenAfterFire(self, transition, ets, tok_save):
+        tok = Token()
+
+        # add a name and first priorities to tok
+        tok.__addFirstProperties(tok_save)
+
+        # update advanced properties
+        self.__updateAdvancedProperties(tok, transition, tok_save, ets)
+
         return tok
+
+    def __updateAfterFiring(self, transition, token, ets):
+        transitions_save = {}
+        # Add token to places after the transition that fired
+        for p, n in (self.downplaces.get(transition) or {}).iteritems():
+            for i in range(n):
+                self.addToken(p, token.copy())
+            if self.inputs.get(p):
+                transitions_save.update(self.inputs.get(p) or {})
+
+        # If a transition is enabled we add it to ets
+        ets.update({t: c for t, c in transitions_save.iteritems() if ets.get(t) and self.isEnabled(t)})
+
+    def __adaptePetriNet(self, transition, ets):
+        fired_tokens = self.__fireToken(transition, ets)
+
+        # We adapte the tokenQueue of targeted transitions and of transition
+        self.__updateTokenQueue(transition, fired_tokens)
+
+        # create the token after the fire
+        token = self.__getTokenAfterFire(transition, ets, fired_tokens)
+
+        # Update the places and ets after the firing
+        self.__updateAfterFiring(transition, token, ets)
 
     def computeFiringTransition(self, ets):
         """ Among the given transitions in ``ets``, this method compute the next transition to fire regarding priority,

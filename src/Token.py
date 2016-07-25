@@ -251,3 +251,21 @@ class Token:
         for tr, heritance in self.fireHeritance.iteritems():
             print '%s --> {%s}' % (repr(tr), ', '.join(['%s:[%s]' % (repr(pl), ', '.join(tkns))
                                                         for pl, tkns in heritance.iteritems()]))
+
+    def __addFirstProperties(self, tok_save):
+        # create the token that has the properties of every previous token
+        names = set()
+        for t in tok_save:
+            # we keep the intersection of each priority
+            for p, attr in t.priority.iteritems():
+                if attr['pref'] == 'priority':
+                    del attr['priority'][0]
+                    self.addPriority(p, attr['priority'], attr['pref'])
+            # save the name of tokens
+            names.update(t.name.split('_') if t.name != 'no name' and t.name != '' else [])
+        self.name = '_'.join(names) or 'no name'
+
+        if self.name == 'no name':
+            for p, attr in self.priority.iteritems():
+                if not attr['priority']:
+                    del self.priority[p]

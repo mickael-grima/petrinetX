@@ -10,6 +10,7 @@ sys.path.append("/home/mickael/Documents/projects/petrinetX/src/")
 
 from Petrinet import PetriNet
 from Place import Place
+from TimeToken import TimeToken
 import logging
 
 
@@ -161,6 +162,18 @@ class TimePetriNet(PetriNet):
     # ----------------------  OTHER FUNCTIONS -----------------------
     # ---------------------------------------------------------------
 
+    def __getMinimumFiringTime(self, transition):
+        mx = 0.0
+
+        # for each t we compute the maximum time of the places before
+        if self.upplaces.get(transition) is not None:
+            for p, nb in self.upplaces[transition].iteritems():
+                toks = self.getSortedNextFiredToken(p, transition)
+                delta = toks[-1].minimumStartingTime.get(transition, - sys.maxint - 1) - self.currentClock
+                mx = max(mx, delta, toks[-1].pclock) + toks[-1].tclock[transition]
+
+        return mx
+
     def optimalTimeEts(self, ets, duration=sys.maxint):
         """ Among the transitions in ``est``, compute the transition whose firing time is the minimal one.
 
@@ -177,14 +190,7 @@ class TimePetriNet(PetriNet):
         duration_, transitions, maxDuration = sys.maxint, [], {}
 
         for t, c in ets.iteritems():
-            mx = 0.0
-
-            # for each t we compute the maximum time of the places before
-            if self.upplaces.get(t) is not None:
-                for p, nb in self.upplaces[t].iteritems():
-                    toks = self.getSortedNextFiredToken(p, t)
-                    delta = toks[-1].minimumStartingTime.get(t, - sys.maxint - 1) - self.currentClock
-                    mx = max(mx, delta, toks[-1].pclock) + toks[-1].tclock[t]
+            mx = self.__getMinimumFiringTime(t)
 
             # we save the duration before the firing of transition t
             maxDuration.setdefault(t, mx)
@@ -199,3 +205,167 @@ class TimePetriNet(PetriNet):
                 transitions.append(t)
 
         return transitions, duration_
+
+    def __adapteClocks(self, transition, duration):
+        for p in self.places.iterkeys():
+            for tok in p.token:
+                dur = max(0.0, duration - tok.pclock)
+                tok.pclock = max(0.0, tok.pclock - duration)
+
+                for t in (self.inputs.get(p) or {}).iterkeys():
+                    delta = tok.minimumStartingTime.get(t, - sys.maxint - 1) - (self.currentClock + duration)
+                    tok.tclock[t] = max(0.0, tok.tclock[t] - max(0.0, dur - max(0.0, delta)))
+
+        for p in self.upplaces.get(transition, {}).iterkeys():
+            for tok in p.token:
+                tok.addTransitionClock(transition, transition.getTransitionTime())
+                tok.tclock[transition] = tok.transitionClocks[transition]
+
+    def __getTokenAfterFire(self, transition, ets, tok_save):
+        tok = TimeToken()
+
+        # add a name and first priorities to tok
+        tok.__addFirstProperties(tok_save)
+
+        # add clocks properties
+        tok.__addClocksProperties(tok_save)
+
+        # update advanced properties
+        self.__updateAdvancedProperties(tok, transition, tok_save, ets)
+
+        return tok
+
+    def __adaptePetriNet(self, transition, duration, ets):
+        fired_tokens = self.__fireToken(transition, ets)
+
+        # We adapte the tokenQueue of targeted transitions and of transition
+        self.__updateTokenQueue(transition, fired_tokens)
+
+        # Adapte every place clocks
+        self.__updateClocks(transition, duration)
+
+        # create the token after the fire
+        token = self.__getTokenAfterFire(transition, ets, fired_tokens)
+
+        # Update the places and ets after the firing
+        self.__updateAfterFiring(transition, token, ets)
+
+    # ---------------------------------------------------------------
+    # ----------------------  DYNAMIC FUNCTIONS ---------------------
+    # ---------------------------------------------------------------
+
+    def computeFiringTransition(self, ets, duration=sys.maxint):
+        if not ets:
+            return None, 0.0
+
+        # compute the enabled transitions with minimal firing time
+        transitions, duration_ = self.optimalTimeEts(ets, duration)
+
+        return self.mostPriorityTransition(*transitions), duration_
+
+    def fire(self, transition, ets, duration=0.0):
+        """ Execute the firing of ``transition``, adapte ``ets`` and all places and tokens in the PetriNet
+
+            :param transition: transition that fired
+            :type transition: :class:`Transition <petrinet_simulator.Transition>`
+            :param ets: set of enabled transitions
+            :type ets: dict
+
+            .. Warning:: ``ets`` must contain only enable transitions, otherwise an Error can be raised
+        """
+        # adapte the places
+        self.__adaptePetriNet(transition, duration, ets)
+
+    def oneFireSimulation(self, ets, duration=sys.maxint):
+        """ Compute the next firing transition and execute the firing: the two methods called are
+            :func:`computeFiringTransition <petrinet_simulator.PetriNet.computeFiringTransition>` and
+            :func:`fire <petrinet_simulator.PetriNet.fire>`
+
+            :param ets: set of enabled transitions
+            :type ets: dict
+
+            :returns: an object of class :class:`Transition <petrinet_simulator.Transition>`
+        """
+        # compute the minimum of time for enabled transitions, and choose the transition
+        transition, duration_ = self.computeFiringTransition(ets, duration)
+
+        if transition is None:
+            return duration_, None
+
+        # fire and adapte each clocks
+        self.fire(transition, ets, duration_)
+
+        # we return the new token and the duration
+        return duration_, transition
+
+    def simulation(self, show=True, step=None, niter=float('nan')):
+        """ Execute the simulation of the PetriNet. It invoques in a loop the method
+            :func:`oneFireSimulation <petrinet_simulator.PetriNet.oneFireSimulation>`
+
+            * options:
+
+                * ``show = True``: if True, informations about firing transitions and currentclock are printed
+                * ``step = None``: If a value is given, at each step we increase the currentclock of step,
+                                   and we try to fire a transition. If it's None, we compute the next firing transition
+                                   and then we increase the currentclock of the necessary amont of time
+                * ``niter = nan``: If a value is done, we do only ``niter`` iterations, if nan we iterate until
+                                   there are no enabled transitions anymore
+        """
+        if not isinstance(show, bool):
+            raise TypeError('Boolean expected, got a %s instead' % show.__class__.__name__)
+        if not step and not isinstance(step, int) and not isinstance(step, long) and not isinstance(step, float):
+            raise TypeError('Numaric value expected, got a %s instead' % step.__class__.__name__)
+
+        if show:
+            print 'beginning of the simulation'
+            print 'currentTime : %s' % self.currentClock
+            print ''
+
+        if self.initialState == {}:
+            self.setInitialState()
+            ets = self.enabledTransitionsSet()
+
+        n = 0
+        if step is None:
+            while(len(ets) != 0 and not n >= niter):
+                duration, transition = self.oneFireSimulation(ets)
+
+                n += 1
+
+                self.currentClock += duration
+                if self.currentClock < transition.minimumStartingTime:
+                    raise ValueError('transition %s fired before his minimum starting time' % transition.name)
+
+                if transition.show and show:
+                    print transition.name + ' fired'
+                    print 'currentTime : %s' % self.currentClock
+                    print ''
+
+        else:
+            duration = 0.0
+            while(len(ets) != 0 and not n >= niter):
+                b = True
+                while(b):
+                    duration_, transition = self.oneFireSimulation(ets, duration)
+                    n += 1
+
+                    if transition is None:
+                        b = False
+                    else:
+                        duration -= duration_
+                    if transition.show and show:
+                        print transition.name + ' fired'
+                        print 'currentTime : %s' % self.currentClock
+                        print ''
+                    if not ets or n >= niter:
+                        break
+
+                if not ets or n >= niter:
+                    break
+
+            self.currentClock += step
+            duration += step
+
+        if show:
+            print self.currentClock
+        print 'end of the simulation'

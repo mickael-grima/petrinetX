@@ -178,3 +178,12 @@ class TimeToken(Token):
             :returns: A float bigger or equal to 0
         """
         return (pref_func(time), super(TimeToken, self).get_priority_value(place, transition)[1])
+
+    def __addClocksProperties(self, tok_save):
+        for t in tok_save:
+            # for each place we save the longest clock
+            for p, c in t.placeClocks.iteritems():
+                self.addPlaceClock(p, c)
+            # for each place we save the longest clock
+            for tr, c in t.transitionClocks.iteritems():
+                self.addTransitionClock(tr, c)
