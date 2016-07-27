@@ -179,7 +179,7 @@ class TimeToken(Token):
         """
         return (pref_func(time), super(TimeToken, self).get_priority_value(place, transition)[1])
 
-    def __addClocksProperties(self, tok_save):
+    def addClocksProperties(self, tok_save):
         for t in tok_save:
             # for each place we save the longest clock
             for p, c in t.placeClocks.iteritems():

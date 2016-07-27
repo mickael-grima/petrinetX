@@ -190,7 +190,7 @@ class PetriNet:
                 else:
                     print "Tokens argument contains a non-Token object that can't be convert to a token"
 
-    def removeToken(self, place, tokens):
+    def removeToken(self, place, *tokens):
         """ Remove the given tokens from ``place``
 
             :param place: the place from where we remove the tokens
@@ -704,8 +704,9 @@ class PetriNet:
         """
         # are there enough token on each place up
         for tok in place.token:
-            is_firing = tok.priority[place]['pref'] == 'time' and transition in tok.priority[place]['priority']
-            is_firing = is_firing or tok.priority.get(place) is None or transition == tok.priority[place]['priority'][0]
+            is_firing = place not in tok.priority or transition == tok.priority[place]['priority'][0]
+            if not is_firing:
+                is_firing = tok.priority[place]['pref'] == 'time' and transition in tok.priority[place]['priority']
             if tok.fire and is_firing:
                 yield tok
 
@@ -730,15 +731,22 @@ class PetriNet:
             self.logger.warning("Transition %s doesn't exist in petriNet %s!" % (str(transition), self.name))
             return False
 
-        tokens = sum([self.getEnabledToken(place, transition) for place in self.upplaces[transition].iterkeys()])
-        names = sum(map(lambda tok: tok.name.split('_'), tokens))  # names of enables tokens
+        tokens = []
+        for place, nb in self.upplaces[transition].iteritems():
+            niter = 0
+            for tok in self.getEnabledToken(place, transition):
+                tokens.append(tok)
+                niter += 1
+            if niter < nb:
+                return False
+        names = sum(map(lambda tok: tok.name.split('_'), tokens), [])  # names of enables tokens
 
         # Every name to the first list of transition.tokenQueue has to belong at least to one of the token on an upplace
-        res = set(transition.tokenQueue[0]).issubset(names)
+        res = set(transition.tokenQueue[0]).issubset(names) if transition.tokenQueue else True
 
         # On each upplace, do we have enough token
         for p, nb in self.upplaces[transition].iteritems():
-            res = res and len(tokens.get(p) or []) >= nb
+            res = res and len(tokens or []) >= nb
 
         return res
 
@@ -770,42 +778,40 @@ class PetriNet:
 
             .. Warning:: If there is NO input between ``place`` and ``transition``, the method return an empty generator
         """
-        if self.inputs.get(place) is None or self.inputs[place].get(transition) is None:
-            self.logger.warning("Place %s has no input with transition %s !" % (str(place), str(transition)))
-            return []
-
         # introduce two list:
         #   - list concerning the token that have to contain the name wanted by transition
         #   - list with the strongest priority
         name_first_tokens = {}
-        priority_tokens = self.getPrioritySortedToken(place, transition)
+        priority_tokens = [tok for tok in self.getPrioritySortedToken(place, transition)]
 
         # counter to know if enough token up are available (concerning the name)
         tokens_words = {}
+        nb_priority = self.inputs[place][transition]
 
-        # We first sort the token by priority and save it with respect to their names
-        for token in self.getEnabledToken(place, transition):
-            tokens_words.setdefault(token, [])
-            for word in token.name.split('_'):
-                if word in transition.tokenQueue:
-                    name_first_tokens.setdefault(word, set())
-                    name_first_tokens[word].add(token)
-                    tokens_words[token].append(word)
+        if transition.tokenQueue:
+            # We first sort the token by priority and save it with respect to their names
+            for token in self.getEnabledToken(place, transition):
+                tokens_words.setdefault(token, [])
+                for word in token.name.split('_'):
+                    if word in transition.tokenQueue:
+                        name_first_tokens.setdefault(word, set())
+                        name_first_tokens[word].add(token)
+                        tokens_words[token].append(word)
 
-        # Then we keep the most priority tokens iff it always exist at least a token for each required name
-        N = len(name_first_tokens)
-        n, nb_priority = 0, self.inputs[place][transition] - N
-        while n < nb_priority:
-            token = priority_tokens[n]
-            if set.intersection(name_first_tokens.itervalues()).difference([token]) >= N:
-                for word in tokens_words[token]:
-                    name_first_tokens[word].remove(token)
-                    n += 1
-            else:
-                del priority_tokens[n]
+            # Then we keep the most priority tokens iff it always exist at least a token for each required name
+            N = len(name_first_tokens)
+            n, nb_priority = 0, nb_priority - N
+            while n < nb_priority:
+                token = priority_tokens[n]
+                if set.intersection(*name_first_tokens.itervalues()).difference([token]) >= N:
+                    for word in tokens_words[token]:
+                        name_first_tokens[word].remove(token)
+                        n += 1
+                else:
+                    del priority_tokens[n]
 
-        for word, dct in name_first_tokens.iteritems():
-            yield dct.iterkeys().next()
+            for word, dct in name_first_tokens.iteritems():
+                yield dct.iterkeys().next()
 
         for token in priority_tokens[:nb_priority]:
             yield token
@@ -931,21 +937,6 @@ class PetriNet:
                     places.update(self.conflictPlaces(t1, t2))
         return places
 
-    def mostPriorityTransition(self, *transitions):
-        """ For each transition in ``transitions``, we keep the one that has the biggest preference compute using
-            the method :func:`pref <petrinet_simulator.PetriNet.pref>`
-
-            :param transitions: *
-            :type transitions: List, dict or tuple
-
-            :returns: An object of class :class:`Transition <petrinet_simulator.Transition>`
-                      or None if no transition are found
-        """
-        try:
-            return sorted(transitions, key=self.pref)[-1]
-        except:
-            return None
-
     def pref(self, transition):
         """ The preference of ``transition`` is computed following these steps:
                 * We consider the tokens up to ``transition`` and enabled for ``transition`` using the method
@@ -962,16 +953,31 @@ class PetriNet:
             :returns: A float
         """
         result = []
-        if self.upplaces.get(transition) is not None:
-            for p, n in self.upplaces[transition].iteritems():
-                for tok in self.getSortedNextFiredToken(p, transition):
-                    if tok.priority.get(p) is not None:
-                        result.extend(map(
-                            lambda tr: pref_func(tok.priority[p]['priority'].index(tr)),
-                            filter(lambda tr: tr == transition, tok.priority[p]['priority'])
-                        ))
+        for p, n in (self.upplaces.get(transition) or {}).iteritems():
+            for tok in self.getSortedNextFiredToken(p, transition):
+                if tok.priority.get(p) is not None:
+                    result.extend(map(
+                        lambda tr: pref_func(tok.priority[p]['priority'].index(tr)),
+                        filter(lambda tr: tr == transition, tok.priority[p]['priority'])
+                    ))
 
         return sum(result) / len(result) if result else 0.0
+
+    def mostPriorityTransition(self, *transitions):
+        """ For each transition in ``transitions``, we keep the one that has the biggest preference compute using
+            the method :func:`pref <petrinet_simulator.PetriNet.pref>`
+
+            :param transitions: *
+            :type transitions: List, dict or tuple
+
+            :returns: An object of class :class:`Transition <petrinet_simulator.Transition>`
+                      or None if no transition are found
+        """
+        try:
+            return sorted(transitions, key=self.pref)[-1]
+        except Exception as e:
+            self.logger.warning(str(e))
+            return None
 
     # -------------------------------------------------------
     # -------------- representation functions ---------------
@@ -1052,7 +1058,7 @@ class PetriNet:
         tok = Token()
 
         # add a name and first priorities to tok
-        tok.__addFirstProperties(tok_save)
+        tok.addFirstProperties(*tok_save)
 
         # update advanced properties
         self.__updateAdvancedProperties(tok, transition, tok_save, ets)

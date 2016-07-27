@@ -225,10 +225,10 @@ class TimePetriNet(PetriNet):
         tok = TimeToken()
 
         # add a name and first priorities to tok
-        tok.__addFirstProperties(tok_save)
+        tok.addFirstProperties(*tok_save)
 
         # add clocks properties
-        tok.__addClocksProperties(tok_save)
+        tok.addClocksProperties(tok_save)
 
         # update advanced properties
         self.__updateAdvancedProperties(tok, transition, tok_save, ets)

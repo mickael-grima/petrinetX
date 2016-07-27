@@ -252,7 +252,7 @@ class Token:
             print '%s --> {%s}' % (repr(tr), ', '.join(['%s:[%s]' % (repr(pl), ', '.join(tkns))
                                                         for pl, tkns in heritance.iteritems()]))
 
-    def __addFirstProperties(self, tok_save):
+    def addFirstProperties(self, *tok_save):
         # create the token that has the properties of every previous token
         names = set()
         for t in tok_save:

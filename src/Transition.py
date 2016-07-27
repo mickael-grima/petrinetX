@@ -7,7 +7,7 @@ Created on Sat Jul 16 17:55:32 2016
 import sys
 sys.path.append("/home/mickael/Documents/projects/petrinetX/src/")
 
-from Node import Node, TimeNode
+from Node import Node
 import logging
 
 
