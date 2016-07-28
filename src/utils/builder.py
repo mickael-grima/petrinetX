@@ -18,6 +18,36 @@ from TimeToken import TimeToken
 from TimePetrinet import TimePetriNet
 
 
+def build_chain_petrinet(size=10):
+    """ build a petrinet as a chain, with given size
+    """
+    places = [Place(name='p%s' % i) for i in range(size)]
+    transitions = [Transition(name='t%s' % i) for i in range(size)]
+
+    inputs = {places[i]: {transitions[i]: 1} for i in range(size)}
+    outputs = {places[i + 1]: {transitions[i]: 1} for i in range(size - 1)}
+
+    pn = PetriNet(name='pn')
+    pn.buildPetriNet(places, transitions, inputs, outputs)
+
+    return pn
+
+
+def build_simple_conflicts():
+    """ build a petrinet where a place has two possible transitions
+    """
+    places = [Place(name='p%s' % i) for i in range(3)]
+    transitions = [Transition(name='t%s' % i) for i in range(2)]
+
+    inputs = {places[0]: {transitions[0]: 1, transitions[1]: 1}}
+    outputs = {places[1]: {transitions[0]: 1}, places[2]: {transitions[1]: 1}}
+
+    pn = PetriNet()
+    pn.buildPetriNet(places, transitions, inputs, outputs)
+
+    return pn
+
+
 def build_small_petrinet():
     pl0 = Place(name='p0')
     pl1 = Place(name='p1')
@@ -37,15 +67,30 @@ def build_small_petrinet():
               [0, 0, 0, 0, 1],
               [0, 0, 0, 0, 1]]
 
-    outputs = [[0, 0, 0, 0, 0],
+    outputs = [[1, 0, 0, 0, 0],
                [0, 2, 0, 0, 0],
                [0, 0, 1, 0, 0],
                [0, 0, 0, 1, 0]]
 
-    tokens = {pl0: [Token(name='token1'), Token(name='token2')], pl2: [Token(name='token3')]}
-
     pn = PetriNet('pn1')
-    pn.buildPetriNet(places, transitions, inputs, outputs, tokens)
+    pn.buildPetriNet(places, transitions, inputs, outputs)
+
+    return pn
+
+
+def build_parallel_chain_petrinet(size=10, branchs=2):
+    """ Build ``branchs`` chain petrinet of size ``size``
+    """
+    places = [Place(name='p_%s_%s' % (b, s)) for b in range(branchs) for s in range(size)]
+    transitions = [Transition(name='t_%s_%s' % (b, s)) for b in range(branchs) for s in range(size)]
+
+    inputs, outputs = {}, {}
+    for b in range(branchs):
+        inputs.update({places[size * b + s]: {transitions[size * b + s]: 1} for s in range(size)})
+        outputs.update({places[size * b + s + 1]: {transitions[size * b + s]: 1} for s in range(size - 1)})
+
+    pn = PetriNet(name='pn')
+    pn.buildPetriNet(places, transitions, inputs, outputs)
 
     return pn
 

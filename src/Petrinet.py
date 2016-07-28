@@ -138,6 +138,13 @@ class PetriNet:
         if not isinstance(place, Place):
             raise TypeError('Place expected, got a %s instead' % place.__class__.__name__)
 
+        name = place.name
+        while self.getPlace(name):
+            name = '%s0' % name
+        if name != place.name:
+            self.logger.warning('A place with name %s already exists in Petrinet, rename in %s' % (place.name, name))
+            place.name = name
+
         self.places.setdefault(place, len(self.places))
         self.posPlaces[place] = pos
 
@@ -154,6 +161,14 @@ class PetriNet:
         """
         if not isinstance(transition, Transition):
             raise TypeError('Transition expected, got a %s instead' % transition.__class__.__name__)
+
+        name = transition.name
+        while self.getPlace(name):
+            name = '%s0' % name
+        if name != transition.name:
+            self.logger.warning('A transition with name %s already exists in Petrinet, rename in %s'
+                                % (transition.name, name))
+            transition.name = name
 
         self.transitions.setdefault(transition, len(self.transitions))
         self.posTransitions[transition] = pos
@@ -190,6 +205,37 @@ class PetriNet:
                 else:
                     print "Tokens argument contains a non-Token object that can't be convert to a token"
 
+    def getPlace(self, name):
+        """ return the place with rank == ind
+        """
+        for place in self.places.iterkeys():
+            if name == place.name:
+                return place
+        return None
+
+    def getTransition(self, name):
+        """ return the transition with rank == ind
+        """
+        for transition in self.transitions.iterkeys():
+            if name == transition.name:
+                return transition
+        return None
+
+    def getTokens(self, place, name=''):
+        """ return a generator of token containing the given name and staying on place
+        """
+        for token in place.token:
+            if token.containsName(name):
+                yield token
+
+    def getTokenNamesOnPlaces(tokens, *places):
+        """ keep only the token whose name is on one of the given places
+        """
+        for token in tokens:
+            for place in places:
+                if token.containsName(*map(lambda tok: tok.name, place.token)):
+                    yield token
+
     def removeToken(self, place, *tokens):
         """ Remove the given tokens from ``place``
 
@@ -223,7 +269,7 @@ class PetriNet:
             else:
                 print "Tokens argument contains a non-Token object that can't be convert to a token"
 
-    def insertTokenQueue(self, transition, tokenNames, i=-1, new_dct_tkn=False, place_presence=False, nb_tok=-1):
+    def insertTokenQueue(self, transition, *tokenNames, **options):
         """ Insert the given tokenNames to the ``transition``'s attribute
             :attr:`tokenQueue <petrinet_simulator.Transition.tokenQueue>`
 
@@ -246,73 +292,14 @@ class PetriNet:
                 * ``nb_tok = -1`` : see the attribute
                             :attr:`tokenQueueAfterFire <petrinet_simulator.Transition.tokenQueueAfterFire>`
 
-            .. Note:: tokenNames can have several types:
-
-                  * *List*, *dict* or *tuple*: in this case we consider all the elements as below and we add them
-                                               at the right place
-                  * anything else: We consider then the string conversion ``str(tokenNames)`` and we add it
-                                   at the right place
-
             .. Warning:: ``nb_tok`` can only have value higher than -1
         """
-        if not isinstance(new_dct_tkn, bool):
-            raise TypeError('Boolean expected, got a %s instead' % new_dct_tkn.__class__.__name__)
-        if not isinstance(place_presence, bool):
-            raise TypeError('Place expected, got a %s instead' % place_presence.__class__.__name__)
+        tkns = set(tokenNames).intersection(
+            sum(map(lambda tok: tok.name, (self.upplaces.get(transition) or {}).iterkeys()), [])
+        ) if options.get('place_presence', False) else set(tokenNames)
 
-        tokNames = []
-        if isinstance(tokenNames, list):
-            for tkn in tokenNames:
-                try:
-                    tokNames.append(str(tkn))
-                except:
-                    print "Tokens argument contains a non-String object that can't be convert to a string"
-        elif isinstance(tokenNames, tuple):
-            for tkn in tokenNames:
-                try:
-                    tokNames.append(str(tkn))
-                except:
-                    print "Tokens argument contains a non-String object that can't be convert to a string"
-        elif isinstance(tokenNames, dict):
-            for tkn in tokenNames:
-                try:
-                    tokNames.append(str(tkn))
-                except:
-                    print "Tokens argument contains a non-String object that can't be convert to a string"
-            print "**WARNING** TokenNames argument is a dictionnary, so there is no particular order !"
-        else:
-            try:
-                tokNames.append(str(tokenNames))
-            except:
-                print "Tokens argument is a non-String object that can't be convert to a string"
-
-        if nb_tok > len(tokNames) or nb_tok < -1:
-            raise ValueError('Try to add %s in tokenQueue of transition %s but the given queue has a length of %s'
-                             % (str(nb_tok), transition.name, len(tokNames)))
-
-        tkns, j = [], 0
-        nbt = len(tokNames) if nb_tok == -1 else nb_tok
-        if place_presence:
-            if self.upplaces.get(transition) is not None:
-                upplaces = {p: nb for p, nb in self.upplaces[transition].iteritems()}
-            for p, nb in upplaces.iteritems():
-                for tok in p.token:
-                    tkn = tokenNames[j]
-                    if tkn in tok.name.split('_'):
-                        tkns.append(tkn)
-                        j += 1
-                    if j >= nbt:
-                        break
-                if j >= nbt:
-                    break
-                j += 1
-        else:
-            for j in range(nbt):
-                tkns.append(tokNames[j])
-                j += 1
-
-        if j < nbt:
-            transition.insertTokenQueue(tkns, i=i, new_dct_tkn=new_dct_tkn)
+        transition.insertTokenQueue(tkns[:options.get('nbt', sys.maxint)], i=options.get('i', -1),
+                                    new_dct_tkn=options.get('new_dct_tkn', False))
 
     def addInput(self, place, transition, tok=1, path=[]):
         """ Add an input between ``place`` and ``transition``.
@@ -685,12 +672,7 @@ class PetriNet:
         """
         assert token in place.token
         token.fire = not token.fire
-
-        for t, n in (self.inputs.get(place) or {}).iteritems():
-            if t in ets and not self.isEnabled(t):
-                del ets[t]
-            if self.isEnabled(t):
-                ets.setdefault(t, self.transitions[t])
+        self.adapteEnabledTransitionsSet(ets, *(self.inputs.get(place) or {}).iterkeys())
 
     def getEnabledToken(self, place, transition):
         """ Get every enable token on upplaces regarding the given ``transition``
@@ -823,17 +805,13 @@ class PetriNet:
         """
         return {t: c for t, c in self.transitions.iteritems() if self.isEnabled(t)}
 
-    def adapteEnabledTransitionsSet(self, transitions, ets):
-        n = 0
+    def adapteEnabledTransitionsSet(self, ets, *transitions):
         for t in transitions:
             is_enabled = self.isEnabled(t)
             if t in ets and not is_enabled:
                 del ets[t]
-                n += 1
             if t not in ets and is_enabled:
                 ets.setdefault(t, self.transitions[t])
-                n += 1
-        return n
 
     def isBlocked(self):
         """ Compute if the there still are enabled transitions or Note
@@ -995,9 +973,7 @@ class PetriNet:
                 transitions_save.update(self.inputs.get(p) or {})
 
         # If a transition is not enabled anymore then its clock is reinitialized
-        for t in transitions_save.iterkeys():
-            if ets.get(t) and not self.isEnabled(t):
-                del ets[t]
+        self.adapteEnabledTransitionsSet(ets, *transitions_save.iterkeys())
 
         return tok_save
 
@@ -1075,7 +1051,7 @@ class PetriNet:
                 transitions_save.update(self.inputs.get(p) or {})
 
         # If a transition is enabled we add it to ets
-        ets.update({t: c for t, c in transitions_save.iteritems() if ets.get(t) and self.isEnabled(t)})
+        self.adapteEnabledTransitionsSet(ets, *transitions_save.iterkeys())
 
     def __adaptePetriNet(self, transition, ets):
         fired_tokens = self.__fireToken(transition, ets)
@@ -1135,7 +1111,7 @@ class PetriNet:
         # we return the new token
         return transition
 
-    def simulation(self, show=True, niter=float('nan')):
+    def simulation(self, show=True, niter=-1):
         if not isinstance(show, bool):
             raise TypeError('Boolean expected, got a %s instead' % show.__class__.__name__)
 
@@ -1145,10 +1121,10 @@ class PetriNet:
 
         if self.initialState == {}:
             self.setInitialState()
-            ets = self.enabledTransitionsSet()
+        ets = self.enabledTransitionsSet()
 
         n = 0
-        while len(ets) != 0 and not n >= niter:
+        while len(ets) != 0 and (niter < 0 or n < niter):
             transition = self.oneFireSimulation(ets)
             n += 1
 

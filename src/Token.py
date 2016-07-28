@@ -83,7 +83,12 @@ class Token:
         except:
             return None
 
-    def addPriority(self, place, pref='time', *transitions):
+    def containsNames(self, *names):
+        """ return True if token.name contains every word in name.split('_')
+        """
+        return set(self.name.split('_')).issubset(names)
+
+    def addPriority(self, place, *transitions, **options):
         """ Add priority for ``place``
 
         :param place: place where the priority is effectiv
@@ -95,10 +100,10 @@ class Token:
 
             * ``pref = 'time'``: We have two choices:
 
-            * ``'time'``: the priority is first the time: among the transitions in ``transitions``,
-                          we choose first the ones that can fire in the minimum time, and then the ones
-                          that are the lowest indice in ``transitions``
-            * `anything else`: Only the first transition can fire. It is deleted of priority's queue after the fire
+                * ``'time'``: the priority is first the time: among the transitions in ``transitions``,
+                              we choose first the ones that can fire in the minimum time, and then the ones
+                              that are the lowest indice in ``transitions``
+                * `anything else`: Only the first transition can fire. It is deleted of priority's queue after the fire
 
         **Example:**
 
@@ -119,54 +124,54 @@ class Token:
 
         """
         if self.priority.get(place) is None:
-            self.priority.setdefault(place, {'priority': [], 'pref': pref})
+            self.priority.setdefault(place, {'priority': [], 'pref': options.get('pref', 'time')})
         for t in transitions:
             self.priority[place]['priority'].append(t)
-            self.priority[place]['pref'] = pref
+            self.priority[place]['pref'] = options.get('pref', 'time')
 
     def addPriorityAfterFire(self, transition, priority, location='self', pref='time'):
         """ If ``transition`` fires we add the given priorities to the given places for the given location.
 
-        :param transition: the transition that could fire
-        :type transition: :class:`Transition <petrinet_simulator.Transition>`
-        :param priority: for a given key place we associate a list of priority transitions
-        :type priority: dict
+            :param transition: the transition that could fire
+            :type transition: :class:`Transition <petrinet_simulator.Transition>`
+            :param priority: for a given key place we associate a list of priority transitions
+            :type priority: dict
 
-        * options:
+            * options:
 
-            * ``location = 'self'``: two kind of values possible:
+                * ``location = 'self'``: two kind of values possible:
 
-            * ``'self'``: the given priority will be add to this token after the fire
-            * ``(place, tokenName)``: All the token on ``place`` whose name contains ``tokenName`` will receive
-                                      the given priority after the fire. Here 'contains' means that ``tokenName
-                                      in self.name.split('_')``.
+                    * ``'self'``: the given priority will be add to this token after the fire
+                    * ``(place, tokenName)``: All the token on ``place`` whose name contains ``tokenName`` will receive
+                                              the given priority after the fire. Here 'contains' means that ``tokenName
+                                              in self.name.split('_')``.
 
-            * ``pref = 'time'``: the added priority will have this pref as option.
-                                 See also :func:`addPriority <petrinet_simulator.Token.addPriority>`
+                * ``pref = 'time'``: the added priority will have this pref as option.
+                                     See also :func:`addPriority <petrinet_simulator.Token.addPriority>`
 
-        **Example:**
+            **Example:**
 
-        >>> import petrinet_simulator as pns
-        >>>
-        >>> token1 = pns.Token(name = 'token1')
-        >>> token2 = pns.Token(name = 'token2')
-        >>> place1 = pns.Place(name = 'place1')
-        >>> place2 = pns.Place(name = 'place2')
-        >>> trans1 = pns.Transition(name = 'tr1')
-        >>> trans2 = pns.Transition(name = 'tr2')
-        >>>
-        >>> place1.addToken(token1)
-        >>>
-        >>> token1.addPriorityAfterFire(trans1, {place1: [trans2]})
-        >>> priority = {place2: [trans2,trans1], place1: [trans1]}
-        >>> token1.addPriorityAfterFire(trans2, priority, location = (place2, 'token1'), pref='pref')
-        >>>
-        >>> token1.print_priority_after_fire() #doctest: +NORMALIZE_WHITESPACE
-        # <Transition : tr1>: #
-        #   self --> {<Place : place1>: [<Transition : tr2>](pref=time)} #
-        # #
-        # <Transition : tr2>: #
-        #   (<Place : place2>, 'token1') --> {<Place : place2>: [<Transition : tr2>, <Transition : tr1>](pref=pref), <Place : place1>: [<Transition : tr1>](pref=pref)} #
+            >>> import petrinet_simulator as pns
+            >>>
+            >>> token1 = pns.Token(name = 'token1')
+            >>> token2 = pns.Token(name = 'token2')
+            >>> place1 = pns.Place(name = 'place1')
+            >>> place2 = pns.Place(name = 'place2')
+            >>> trans1 = pns.Transition(name = 'tr1')
+            >>> trans2 = pns.Transition(name = 'tr2')
+            >>>
+            >>> place1.addToken(token1)
+            >>>
+            >>> token1.addPriorityAfterFire(trans1, {place1: [trans2]})
+            >>> priority = {place2: [trans2,trans1], place1: [trans1]}
+            >>> token1.addPriorityAfterFire(trans2, priority, location = (place2, 'token1'), pref='pref')
+            >>>
+            >>> token1.print_priority_after_fire() #doctest: +NORMALIZE_WHITESPACE
+            # <Transition : tr1>: #
+            #   self --> {<Place : place1>: [<Transition : tr2>](pref=time)} #
+            # #
+            # <Transition : tr2>: #
+            #   (<Place : place2>, 'token1') --> {<Place : place2>: [<Transition : tr2>, <Transition : tr1>](pref=pref), <Place : place1>: [<Transition : tr1>](pref=pref)} #
         """
         if self.priorityAfterFire.get(transition) is None:
             self.priorityAfterFire.setdefault(transition, {location: {}})
@@ -181,28 +186,28 @@ class Token:
         """ If ``transition`` fires, the tokens on ``place``, such that ``tokenName in token.name.split('_')``,
             change :attr:`fire <petrinet_simulator.Token.fire>` to ``True``
 
-        :param tokenName: part of concerning token's name
-        :type tokenName: str
-        :param place: We consider only token on this place
-        :type place: :class:`Place <petrinet_simulator.Place>`
-        :param transition: The priorities are added if and only if transition fires
-        :type transition: :class:`Transition <petrinet_simulator.Transition>`
+            :param tokenName: part of concerning token's name
+            :type tokenName: str
+            :param place: We consider only token on this place
+            :type place: :class:`Place <petrinet_simulator.Place>`
+            :param transition: The priorities are added if and only if transition fires
+            :type transition: :class:`Transition <petrinet_simulator.Transition>`
 
-        **Example:**
+            **Example:**
 
-        >>> import petrinet_simulator as pns
-        >>>
-        >>> token1 = pns.Token(name = 'token1')
-        >>> token2 = pns.Token(name = 'token2')
-        >>> place1 = pns.Place(name = 'place1')
-        >>> trans1 = pns.Transition(name = 'tr1')
-        >>>
-        >>> place1.addToken(token2)
-        >>>
-        >>> token1.addFireHeritance('token2', place1, trans1)
-        >>>
-        >>> token1.print_fire_heritance() #doctest: +NORMALIZE_WHITESPACE
-        # <Transition : tr1> --> {<Place : place1>:[token2]} #
+            >>> import petrinet_simulator as pns
+            >>>
+            >>> token1 = pns.Token(name = 'token1')
+            >>> token2 = pns.Token(name = 'token2')
+            >>> place1 = pns.Place(name = 'place1')
+            >>> trans1 = pns.Transition(name = 'tr1')
+            >>>
+            >>> place1.addToken(token2)
+            >>>
+            >>> token1.addFireHeritance('token2', place1, trans1)
+            >>>
+            >>> token1.print_fire_heritance() #doctest: +NORMALIZE_WHITESPACE
+            # <Transition : tr1> --> {<Place : place1>:[token2]} #
         """
         if self.fireHeritance.get(transition) is None:
             self.fireHeritance.setdefault(transition, {})

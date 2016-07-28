@@ -21,9 +21,9 @@ def concatenate(petriNet1, petriNet2, name='no name', input_connections=None, ou
 
             * ``name = 'no name'``: the name of the return petriNet
             * ``input_connections = None``: the input's connections added to the return petriNet.
-                                            It's a tuple of place, transition
+                                            It's a list of tuple of place, transition
             * ``output_connections = None``: the output's connections added to the return petriNet.
-                                             It's a tuple of place, transition
+                                             It's a list of tuple of place, transition
 
         :returns: an object of class :class:`PetriNet <petrinet_simulator.PetriNet>`
     """
