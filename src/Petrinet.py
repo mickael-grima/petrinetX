@@ -11,15 +11,17 @@ sys.path.append("/home/mickael/Documents/projects/petrinetX/src/")
 from Token import Token
 from Place import Place
 from Transition import Transition
-from utils.tools import pref_func
+from utils.tools import pref_func, get_id
+from Simulator import Simulator
+import graphviz as gz
 import logging
 
 
-class PetriNet:
+class PetriNet(Simulator):
     """This class represents a petriNet
     """
 
-    def __init__(self, name='no name', logger=logging):
+    def __init__(self, name='no name', logger=None):
         self.name = name
         """ Name of the petriNet
         """
@@ -76,7 +78,7 @@ class PetriNet:
             represent the angle of the edge. First point is the position of ``place`` (respectively ``transition``),
             last point is the position of ``transition`` (respectively ``place``).
         """
-        self.logger = logger
+        self.logger = logger or logging.getLogger(__name__)
 
     def __repr__(self):
         return '<PetriNet : %s>' % self.name
@@ -136,17 +138,12 @@ class PetriNet:
                                        :attr:`posPlaces <petrinet_simulator.PetriNet.posPlaces>`
         """
         if not isinstance(place, Place):
+            self.logger.error('Place expected, got a %s instead', place.__class__.__name__)
             raise TypeError('Place expected, got a %s instead' % place.__class__.__name__)
 
-        name = place.name
-        while self.getPlace(name):
-            name = '%s0' % name
-        if name != place.name:
-            self.logger.warning('A place with name %s already exists in Petrinet, rename in %s' % (place.name, name))
-            place.name = name
-
-        self.places.setdefault(place, len(self.places))
-        self.posPlaces[place] = pos
+        self.places.setdefault(get_id(place), place)
+        self.posPlaces[get_id(place)] = pos
+        self.logger.info('Place "%s" added in petrinet "%s"', place.name, self.name)
 
     def addTransition(self, transition, pos=(0.0, 0.0)):
         """ Add ``transition`` to the petriNet's attribute :attr:`transitions <petrinet_simulator.PetriNet.transitions>`
@@ -160,18 +157,12 @@ class PetriNet:
                                        :attr:`posTransitions <petrinet_simulator.PetriNet.posTransitions>`
         """
         if not isinstance(transition, Transition):
+            self.logger.error('Transition expected, got a %s instead', transition.__class__.__name__)
             raise TypeError('Transition expected, got a %s instead' % transition.__class__.__name__)
 
-        name = transition.name
-        while self.getPlace(name):
-            name = '%s0' % name
-        if name != transition.name:
-            self.logger.warning('A transition with name %s already exists in Petrinet, rename in %s'
-                                % (transition.name, name))
-            transition.name = name
-
-        self.transitions.setdefault(transition, len(self.transitions))
-        self.posTransitions[transition] = pos
+        self.transitions.setdefault(get_id(transition), transition)
+        self.posTransitions[get_id(transition)] = pos
+        self.logger.info('Transition "%s" added in petrinet "%s"', transition.name, self.name)
 
     def addToken(self, place, *tokens):
         """ Add the given tokens to ``place``
@@ -190,37 +181,31 @@ class PetriNet:
         """
         if not isinstance(place, Place):
             raise TypeError('Place expected, got a %s instead' % place.__class__.__name__)
-        if self.places.get(place) is None:
-            print "**WARNING** Try to add a token to the inexistant place %s" % place.name
+        if self.places.get(get_id(place)) is None:
+            self.logger.warning("Try to add a token to the inexistant place %s", place.name)
 
         else:
             for token in tokens:
                 if isinstance(token, Token):
-                    tok = token
-                    place.addToken(tok)
-                    if self.token.get(place) is None:
-                        self.token.setdefault(place, 1)
-                    else:
-                        self.token[place] += 1
+                    place.addToken(token)
+                    self.token.setdefault(place, 0)
+                    self.token[place] += 1
+                    self.logger.info("Token %s added to Place %s in petrinet %s", token.name, place.name, self.name)
                 else:
-                    print "Tokens argument contains a non-Token object that can't be convert to a token"
+                    self.logger.error("Tokens argument contains a non-Token object: %s", str(token))
+                    raise TypeError("Tokens argument contains a non-Token object: %s" % str(token))
 
-    def getPlace(self, name):
-        """ return the place with rank == ind
+    def getPlace(self, place_id):
+        """ return the place with place_id
         """
-        for place in self.places.iterkeys():
-            if name == place.name:
-                return place
-        return None
+        return self.places.get(place_id)
 
-    def getTransition(self, name):
+    def getTransition(self, transition_id):
         """ return the transition with rank == ind
         """
-        for transition in self.transitions.iterkeys():
-            if name == transition.name:
-                return transition
-        return None
+        return self.transitions.get(transition_id)
 
+    @staticmethod
     def getTokens(self, place, name=''):
         """ return a generator of token containing the given name and staying on place
         """
@@ -228,6 +213,7 @@ class PetriNet:
             if token.containsName(name):
                 yield token
 
+    @staticmethod
     def getTokenNamesOnPlaces(tokens, *places):
         """ keep only the token whose name is on one of the given places
         """
@@ -252,22 +238,24 @@ class PetriNet:
                     * anything else: nothing happens
         """
         if not isinstance(place, Place):
+            self.logger.error('Place expected, got a %s instead', place.__class__.__name__)
             raise TypeError('Place expected, got a %s instead' % place.__class__.__name__)
-        if self.places.get(place) is None:
-            print "**WARNING** Try to remove a token to the inexistant place %s" % place.name
+        if self.places.get(get_id(place)) is None:
+            self.logger.warning("Try to remove a token to the inexistant place %s", place.name)
+            return
 
-        for tok in tokens:
-            if isinstance(tok, Token):
-                token = tok
+        for token in tokens:
+            if isinstance(token, Token):
                 if token in place.token:
                     if self.token.get(place) is not None:
-                        if self.token[place] > 1:
-                            self.token[place] -= 1
-                        else:
+                        self.token[place] -= 1
+                        if self.token[place] <= 0:
                             del self.token[place]
                     place.removeToken(token)
+                    self.logger.info("Token %s has been removedfrom Place %s", token.name, place.name)
             else:
-                print "Tokens argument contains a non-Token object that can't be convert to a token"
+                self.logger.error("Tokens argument contains a non-Token object: %s", str(token))
+                raise TypeError("Tokens argument contains a non-Token object: %s" % str(token))
 
     def insertTokenQueue(self, transition, *tokenNames, **options):
         """ Insert the given tokenNames to the ``transition``'s attribute
@@ -295,7 +283,7 @@ class PetriNet:
             .. Warning:: ``nb_tok`` can only have value higher than -1
         """
         tkns = set(tokenNames).intersection(
-            sum(map(lambda tok: tok.name, (self.upplaces.get(transition) or {}).iterkeys()), [])
+            sum(map(lambda tok: tok.name, (self.upplaces.get(get_id(transition)) or {}).iterkeys()), [])
         ) if options.get('place_presence', False) else set(tokenNames)
 
         transition.insertTokenQueue(tkns[:options.get('nbt', sys.maxint)], i=options.get('i', -1),
@@ -321,29 +309,32 @@ class PetriNet:
                   is then created
         """
         if not isinstance(place, Place):
+            self.logger.error('Place expected, got a %s instead', place.__class__.__name__)
             raise TypeError('Place expected, got a %s instead' % place.__class__.__name__)
         if not isinstance(transition, Transition):
+            self.logger.error('Transition expected, got a %s instead', transition.__class__.__name__)
             raise TypeError('Transition expected, got a %s instead' % transition.__class__.__name__)
         if tok < 0:
+            self.logger.error('negative number of token')
             raise ValueError('negative number of token')
 
-        if self.places.get(place) is None:
+        place_id, transition_id = get_id(place), get_id(transition)
+        if self.places.get(place_id) is None:
             self.addPlace(place)
-        if self.transitions.get(transition) is None:
+        if self.transitions.get(transition_id) is None:
             self.addTransition(transition)
 
         if tok != 0:
-            if self.inputs.get(place) is None:
-                self.inputs.setdefault(place, {transition: tok})
-            else:
-                self.inputs[place].setdefault(transition, tok)
+            self.inputs.setdefault(place_id, {})
+            self.inputs[place_id].setdefault(transition_id, tok)
 
-            if self.upplaces.get(transition) is None:
-                self.upplaces.setdefault(transition, {place: tok})
-            else:
-                self.upplaces[transition].setdefault(place, tok)
+            self.upplaces.setdefault(transition_id, {})
+            self.upplaces[transition_id].setdefault(place_id, tok)
 
-            self.paths.setdefault((place, transition), path)
+            self.paths.setdefault((place_id, transition_id), path)
+
+            self.logger.info('Input from Place %s to Transition %s in petrinet %s added',
+                             place.name, transition.name, self.name)
 
     def removeInput(self, place, transition):
         """ Remove the input between ``place`` and ``transition``.
@@ -359,21 +350,27 @@ class PetriNet:
                   If ``place`` and/or ``transition`` doesn't exist(s) in the petriNet, no modification is done
         """
         if not isinstance(place, Place):
+            self.logger.error('Place expected, got a %s instead', place.__class__.__name__)
             raise TypeError('Place expected, got a %s instead' % place.__class__.__name__)
         if not isinstance(transition, Transition):
+            self.logger.error('Transition expected, got a %s instead', transition.__class__.__name__)
             raise TypeError('Transition expected, got a %s instead' % transition.__class__.__name__)
 
-        if self.inputs.get(place) is not None and self.inputs[place].get(transition) is not None:
-            del self.inputs[place][transition]
-            if len(self.inputs[place]) == 0:
-                del self.inputs[place]
-        if self.upplaces.get(transition) is not None and self.upplaces[transition].get(place) is not None:
-            del self.upplaces[transition][place]
-            if len(self.upplaces[transition]) == 0:
-                del self.upplaces[transition]
+        place_id, transition_id = get_id(place), get_id(transition)
+        if (self.inputs.get(place_id) or {}).get(transition_id) is not None:
+            del self.inputs[place_id][transition_id]
+            if len(self.inputs[place_id]) == 0:
+                del self.inputs[place_id]
+        if (self.upplaces.get(transition_id) or {}).get(place_id) is not None:
+            del self.upplaces[transition_id][place_id]
+            if len(self.upplaces[transition_id]) == 0:
+                del self.upplaces[transition_id]
 
-        if self.paths.get((place, transition)) is not None:
-            del self.paths[(place, transition)]
+        if self.paths.get((place_id, transition_id)) is not None:
+            del self.paths[(place_id, transition_id)]
+
+        self.logger.info("Input from Place %s to Transition %s in petrinet %s removed",
+                         place.name, transition.name, self.name)
 
     def addOutput(self, place, transition, tok=1, path=[]):
         """ Add an output between ``place`` and ``transition``.
@@ -395,29 +392,32 @@ class PetriNet:
                   is then created
         """
         if not isinstance(place, Place):
+            self.logger.error('Place expected, got a %s instead', place.__class__.__name__)
             raise TypeError('Place expected, got a %s instead' % place.__class__.__name__)
         if not isinstance(transition, Transition):
+            self.logger.error('Transition expected, got a %s instead', transition.__class__.__name__)
             raise TypeError('Transition expected, got a %s instead' % transition.__class__.__name__)
         if tok < 0:
+            self.logger.error('negative number of token')
             raise ValueError('negative number of token')
 
-        if self.places.get(place) is None:
+        place_id, transition_id = get_id(place), get_id(transition)
+        if self.places.get(place_id) is None:
             self.addPlace(place)
-        if self.transitions.get(transition) is None:
+        if self.transitions.get(transition_id) is None:
             self.addTransition(transition)
 
         if tok != 0:
-            if self.outputs.get(place) is None:
-                self.outputs.setdefault(place, {transition: tok})
-            else:
-                self.outputs[place].setdefault(transition, tok)
+            self.outputs.setdefault(place_id, {})
+            self.outputs[place_id].setdefault(transition_id, tok)
 
-            if self.downplaces.get(transition) is None:
-                self.downplaces.setdefault(transition, {place: tok})
-            else:
-                self.downplaces[transition].setdefault(place, tok)
+            self.downplaces.setdefault(transition_id, {})
+            self.downplaces[transition_id].setdefault(place_id, tok)
 
-            self.paths.setdefault((transition, place), path)
+            self.paths.setdefault((transition_id, place_id), path)
+
+            self.logger.info('Output from Transition %s to Place %s in petrinet %s added',
+                             transition.name, place.name, self.name)
 
     def removeOutput(self, place, transition):
         """ Remove an output between ``place`` and ``transition``.
@@ -438,21 +438,27 @@ class PetriNet:
                   If ``place`` and/or ``transition`` doesn't exist(s) in the petriNet, no modification is done
         """
         if not isinstance(place, Place):
+            self.logger.error('Place expected, got a %s instead', place.__class__.__name__)
             raise TypeError('Place expected, got a %s instead' % place.__class__.__name__)
         if not isinstance(transition, Transition):
+            self.logger.error('Transition expected, got a %s instead', transition.__class__.__name__)
             raise TypeError('Transition expected, got a %s instead' % transition.__class__.__name__)
 
-        if self.outputs.get(place) is not None and self.outputs[place].get(transition) is not None:
-            del self.outputs[place][transition]
-            if len(self.outputs[place]) == 0:
-                del self.outputs[place]
-        if self.downplaces.get(transition) is not None and self.downplaces[transition].get(place) is not None:
-            del self.downplaces[transition][place]
-            if len(self.downplaces[transition]) == 0:
-                del self.downplaces[transition]
+        place_id, transition_id = get_id(place), get_id(transition)
+        if (self.outputs.get(place_id) or {}).get(transition_id) is not None:
+            del self.outputs[place_id][transition_id]
+            if len(self.outputs[place_id]) == 0:
+                del self.outputs[place_id]
+        if (self.downplaces.get(transition_id) or {}).get(place_id) is not None:
+            del self.downplaces[transition_id][place_id]
+            if len(self.downplaces[transition_id]) == 0:
+                del self.downplaces[transition_id]
 
-        if self.paths.get((transition, place)) is not None:
-            del self.paths[(transition, place)]
+        if self.paths.get((transition_id, place_id)) is not None:
+            del self.paths[(transition_id, place_id)]
+
+        self.logger.info('Output from Transition %s to Place %s in petrinet %s removed',
+                         transition.name, place.name, self.name)
 
     def savePlaces(self):
         """ Save place's informations into :attr:`initialState <petrinet_simulator.PetriNet.initialState>`
@@ -1134,3 +1140,16 @@ class PetriNet:
 
         if show:
             print 'end of the simulation'
+
+    def to_graph(self):
+        """ create the graphviz graph related to petrinet
+        """
+        graph = gz.Graph(self.name)
+        for place in self.places:
+            graph.node(place.name)
+
+        return graph
+
+    def to_image(self, name):
+        graph = self.to_graph()
+        return graph.render(name)

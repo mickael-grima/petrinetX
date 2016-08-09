@@ -6,6 +6,10 @@ Created on Thu Jul 21 21:38:37 2016
 """
 
 
+def get_id(obj):
+    return hash(obj)
+
+
 def pref_func(x):
     """ Higher ``x`` is, lower the result is
 

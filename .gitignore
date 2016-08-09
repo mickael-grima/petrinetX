@@ -90,3 +90,4 @@ ENV/
 
 # specific folders
 to_trash/
+data/
