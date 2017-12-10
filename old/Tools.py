@@ -36,7 +36,7 @@ def concatenate(petriNet1, petriNet2, name='no name', input_connections=None, ou
     if petriNet1.startDate is not None:
         if petriNet2.startDate is not None:
             dur = (petriNet1.startDate - petriNet2.startDate).total_seconds() / 60.
-            if(dur > 0):
+            if (dur > 0):
                 minimumDate = petriNet2.startDate
             else:
                 minimumDate = petriNet1.startDate
@@ -102,7 +102,7 @@ def read_graph(src):
     while True:
         line = lines[0]
         data = line.split()
-        if(data[2] == "<graph"):
+        if (data[2] == "<graph"):
             break
         else:
             del lines[0]
@@ -119,7 +119,7 @@ def read_graph(src):
             end_node = ""
             j = 0
             word = data[j]
-            while(word == ''):
+            while (word == ''):
                 end_node += ' '
                 j += 1
                 word = data[j]
@@ -138,7 +138,7 @@ def read_graph(src):
             end_edge = ''
             j = 0
             word = data[j]
-            while(word == ''):
+            while (word == ''):
                 end_edge += ' '
                 j += 1
                 word = data[j]
@@ -164,156 +164,154 @@ def read_graph(src):
 
     for lines in edges:
         idd1, idd2, path = __create_edge(lines)
-        for p,k in pt.places.iteritems():
-        if(p.idd == idd1):
-            place = p
-            typ = 'input'
-        if(p.idd == idd2):
+        for p, k in pt.places.iteritems():
+            if (p.idd == idd1):
+                place = p
+                typ = 'input'
+        if (p.idd == idd2):
             place = p
             typ = 'output'
-        for t,c in pt.transitions.iteritems():
-        if(t.idd == idd1 or t.idd == idd2):
-            transition = t
-        
-        if(typ == 'input'):
-        pt.addInput(place,transition, path = path)
-        if(typ == 'output'):
-        pt.addOutput(place, transition, path = path)
-    
+        for t, c in pt.transitions.iteritems():
+            if (t.idd == idd1 or t.idd == idd2):
+                transition = t
+
+        if (typ == 'input'):
+            pt.addInput(place, transition, path=path)
+        if (typ == 'output'):
+            pt.addOutput(place, transition, path=path)
+
     return pt
 
-    
-    @staticmethod
-    def __create_node(lines):
-    
+
+@staticmethod
+def __create_node(lines):
     name = None
     nb_tok = 0
-    
+
     typ = None
     node = None
-    
+
     line = lines[0].rstrip('\n')
     data = line.split(' ')
     i = 0
-    while(data[i] != "<node"):
+    while (data[i] != "<node"):
         i += 1
-    word = data[i+1].split('=')[1].rstrip('>')
+    word = data[i + 1].split('=')[1].rstrip('>')
     idd = word.split('"')[1]
-    
+
     i = 0
-    while(i < len(lines)):
-        
+    while (i < len(lines)):
+
         line = lines[i].rstrip('\n')
         data = line.split(' ')
-        
-        if('<data' in data):
-        
-        #find the end of data
+
+        if ('<data' in data):
+
+        # find the end of data
         end_data = ''
         j = 0
         word = data[j]
-        while(word == ''):
+        while (word == ''):
             end_data += ' '
             j += 1
             word = data[j]
         end_data += "</data>"
-        
-        #explore data
-        while(lines[i] != end_data):
+
+        # explore data
+        while (lines[i] != end_data):
             i += 1
             line = lines[i].rstrip('\n')
             dt = line.split('y:')
-            
-            #if it is a label
-            if(len(dt) > 1 and dt[1].split(' ')[0] == "NodeLabel"):
-            label = dt[1].rstrip("</").split('>')[1]
-            if(label != ''):
-                if(len(label) >= 3):
-                name = label
+
+            # if it is a label
+            if (len(dt) > 1 and dt[1].split(' ')[0] == "NodeLabel"):
+                label = dt[1].rstrip("</").split('>')[1]
+            if (label != ''):
+                if (len(label) >= 3):
+                    name = label
                 else:
-                nb_tok = int(label)
-            
-            #transition or Place?
-            if(len(dt) > 1 and dt[1].split(' ')[0] == "Shape"):
-            shape = dt[1].split(' ')[1].rstrip('/>').split('=')[1]
-            if(shape == '"ellipse"'):
+                    nb_tok = int(label)
+
+            # transition or Place?
+            if (len(dt) > 1 and dt[1].split(' ')[0] == "Shape"):
+                shape = dt[1].split(' ')[1].rstrip('/>').split('=')[1]
+            if (shape == '"ellipse"'):
                 node = TimePlace()
                 typ = 'place'
-            if(shape == '"rectangle"'):
+            if (shape == '"rectangle"'):
                 node = TimeTransition()
                 typ = 'transition'
-            
-            #transition or Place?
-            if(len(dt) > 1 and dt[1].split(' ')[0] == "Geometry"):
-            words = dt[1].split(' ')
+
+            # transition or Place?
+            if (len(dt) > 1 and dt[1].split(' ')[0] == "Geometry"):
+                words = dt[1].split(' ')
             j = 0
-            while(j < len(words)):
+            while (j < len(words)):
                 w = words[j].rstrip('/>').split('=')
-                if('x' in w):
-                x = float(w[1].split('"')[1])
-                if('y' in w):
-                y = float(w[1].split('"')[1])
+                if ('x' in w):
+                    x = float(w[1].split('"')[1])
+                if ('y' in w):
+                    y = float(w[1].split('"')[1])
                 j += 1
-        
+
         i += 1
-                
-    if(typ == 'place'):
+
+    if (typ == 'place'):
         node.name = name
         for i in range(nb_tok):
-        tok = TimeToken()
+            tok = TimeToken()
         node.addToken(tok)
-    if(typ == 'transition'):
+    if (typ == 'transition'):
         node.name = name
-    if(typ is None):
+    if (typ is None):
         raise ValueError('this node is not a real node')
-    
+
     node.idd = idd
-    pos = (x,y)
-    
+    pos = (x, y)
+
     return node, typ, pos
-    
-    
-    @staticmethod
-    def __create_edge(lines):
+
+
+@staticmethod
+def __create_edge(lines):
     path = []
 
     line = lines[0].rstrip('\n')
     data = line.split(' ')
     i = 0
-    while(data[i] == ''):
+    while (data[i] == ''):
         i += 1
-    
-    idd1 = data[i+2].split('=')[1].split('"')[1]
-    idd2 = data[i+3].split('=')[1].split('"')[1]
-    
+
+    idd1 = data[i + 2].split('=')[1].split('"')[1]
+    idd2 = data[i + 3].split('=')[1].split('"')[1]
+
     i = 0
-    while(i < len(lines)):
+    while (i < len(lines)):
         line = lines[i].rstrip('\n')
         data = line.split('y:')
         dt = line.split(' ')
-        
-        if(len(data) > 1 and data[1].split(' ')[0] == 'Path'):
-        
-        #find the end of data
-        end_path = ''
+
+        if (len(data) > 1 and data[1].split(' ')[0] == 'Path'):
+            # find the end of data
+            end_path = ''
         j = 0
         word = dt[j]
-        while(word == ''):
+        while (word == ''):
             end_path += ' '
             j += 1
             word = dt[j]
         end_path += "</y:Path>"
         i += 1
-        
-        while(lines[i] != end_path and lines[i].split(' ')[j] == ''):
+
+        while (lines[i] != end_path and lines[i].split(' ')[j] == ''):
             words = lines[i].rstrip('\n').split('y:')
-            if(words[1].split(' ')[0] == 'Point'):
-            w = words[1].rstrip('/>').split(' ')
+            if (words[1].split(' ')[0] == 'Point'):
+                w = words[1].rstrip('/>').split(' ')
             x = float(w[1].split('=')[1].split('"')[1])
             y = float(w[2].split('=')[1].split('"')[1])
-            path.append((x,y))
+            path.append((x, y))
             i += 1
-        
+
         i += 1
-    
+
     return idd1, idd2, path
