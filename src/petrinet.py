@@ -1,6 +1,4 @@
 
-import utils
-from nodes import Place, Transition
 from fire_queues import DefaultFireQueue
 
 
@@ -12,12 +10,10 @@ class BasePetrinet(object):
         # Next transition to fire
         self.fire_queue = DefaultFireQueue()
 
-    @utils.ensure_type(Transition)
     def add_transition(self, transition):
         self.transitions.add(transition)
         self.fire_queue.insert_transition(transition)
 
-    @utils.ensure_type(Place)
     def add_place(self, place):
         self.places.add(place)
 

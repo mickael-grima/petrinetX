@@ -4,45 +4,32 @@ Created on Sat Jul 16 17:55:32 2016
 
 @author: Mickael Grima
 """
-from rules import PlaceRule, TransitionRule, Rule
-from tokens import Token
-from utils import ensure_type
-
-import logging
-
-logger = logging.getLogger(__name__)
+from rules import DefaultTransitionRule
 
 
-class Node:
-    """ This class represents a node in the :class:`PetriNet <petrinet_simulator.PetriNet>`
-        In particulary it the parent class of the classes :class:`Transition <petrinet_simulator.Transition>`
-        and :class:`Place <petrinet_simulator.Place>`
-    """
-
-    def __init__(self, name=None):
-        self.name = name
-        """Name of the node
-        """
+class Node(object):
+    def __init__(self):
         self.rules = []
-        """Rules
+
+    def add_rule(self, rule, *args, **kwargs):
         """
+        Rule's actor should be node itself
 
-    def __repr__(self):
-        return '<%s : %s>' % (self.__class__.__name__, self.name)
-
-    @ensure_type(Rule)
-    def add_rule(self, rule):
-        self.rules.append(rule)
+        :param rule: class object
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        self.rules.append(rule(self, *args, **kwargs))
 
 
 class Place(Node):
-    def __init__(self, name=None):
-        super(Place, self).__init__(name=name)
+    def __init__(self):
+        super(Place, self).__init__()
         self.__tokens = set()
         self.__up_transitions = {}
         self.__down_transitions = {}
 
-    @ensure_type(Token)
     def add_token(self, token):
         self.__tokens.add(token)
 
@@ -57,59 +44,65 @@ class Place(Node):
         return len(self.__tokens) >= flow
 
     def pop_n_tokens(self, flow=1):
-        for _ in range(flow):
-            self.__tokens.pop()
+        tokens = set()
+        for _ in range(min(flow, len(self.__tokens))):
+            tokens.add(self.__tokens.pop())
+        return tokens
 
-    @ensure_type(PlaceRule)
-    def add_rule(self, rule):
-        return super(Place, self).add_rule(rule)
-
-    @ensure_type(Transition)
     def add_down_transition(self, transition, flow):
         self.__down_transitions[transition] = flow
 
-    @ensure_type(Transition)
     def add_up_transition(self, transition, flow):
         self.__up_transitions[transition] = flow
 
     def iter_transitions(self):
-        for transition, flow in self.__down_transitions.iteritems():
-            yield transition, flow
-        for transition, flow in self.__up_transitions.iteritems():
-            yield transition, flow
+        for transition, _ in self.__down_transitions.iteritems():
+            yield transition
+        for transition, _ in self.__up_transitions.iteritems():
+            yield transition
 
 
 class Transition(Node):
-    def __init__(self, name=None):
-        super(Transition, self).__init__(name=name)
+    def __init__(self, default=True):
+        """
+        If default is set to True, we append DefaultTransitionRule in the
+        rules' list
+
+        :param default: boolean
+        """
+        super(Transition, self).__init__()
+        if default is True:
+            self.add_rule(DefaultTransitionRule)
+
         self.__down_places = {}
         self.__up_places = {}
 
-    @ensure_type(Place)
     def add_down_place(self, place, flow=1):
         self.__down_places[place] = flow
 
-    @ensure_type(Place)
     def add_up_place(self, place, flow=1):
         self.__up_places[place] = flow
 
-    @ensure_type(TransitionRule)
-    def add_rule(self, rule):
-        return super(Transition, self).add_rule(rule)
+    def get_place_flow(self, place):
+        if place in self.__down_places:
+            return self.__down_places[place]
+        if place in self.__up_places:
+            return self.__up_places[place]
+        return 0
 
     def iter_down_places(self):
         for place, flow in self.__down_places.iteritems():
-            yield place, flow
+            yield place
 
     def iter_up_places(self):
         for place, flow in self.__up_places.iteritems():
-            yield place, flow
+            yield place
 
     def iter_places(self):
-        for item in self.iter_down_places():
-            yield item
-        for item in self.iter_up_places():
-            yield item
+        for place in self.iter_down_places():
+            yield place
+        for place in self.iter_up_places():
+            yield place
 
     def fire(self):
         for rule in self.rules:

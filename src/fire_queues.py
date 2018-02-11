@@ -1,12 +1,8 @@
 
-import utils
-
-
 class FireQueue(object):
     def __init__(self):
         self.queue = []
 
-    @utils.ensure_type
     def insert_transition(self, transition, index=-1):
         self.queue.insert(index, transition)
 
