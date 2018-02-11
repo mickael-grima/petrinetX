@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Jul 16 17:55:32 2016
-
-@author: Mickael Grima
+Contains Transition and Place definitions.
 """
 from rules import DefaultTransitionRule
 
@@ -49,10 +47,10 @@ class Place(Node):
             tokens.add(self.__tokens.pop())
         return tokens
 
-    def add_down_transition(self, transition, flow):
+    def add_down_transition(self, transition, flow=1):
         self.__down_transitions[transition] = flow
 
-    def add_up_transition(self, transition, flow):
+    def add_up_transition(self, transition, flow=1):
         self.__up_transitions[transition] = flow
 
     def iter_transitions(self):
