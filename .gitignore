@@ -89,5 +89,4 @@ ENV/
 .ropeproject
 
 # specific folders
-to_trash/
-data/
+.idea

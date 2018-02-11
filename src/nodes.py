@@ -6,7 +6,8 @@ from rules import DefaultTransitionRule
 
 
 class Node(object):
-    def __init__(self):
+    def __init__(self, name=None):
+        self.name = name
         self.rules = []
 
     def add_rule(self, rule, *args, **kwargs):
@@ -22,8 +23,8 @@ class Node(object):
 
 
 class Place(Node):
-    def __init__(self):
-        super(Place, self).__init__()
+    def __init__(self, name=None):
+        super(Place, self).__init__(name=name)
         self.__tokens = set()
         self.__up_transitions = {}
         self.__down_transitions = {}
@@ -61,14 +62,14 @@ class Place(Node):
 
 
 class Transition(Node):
-    def __init__(self, default=True):
+    def __init__(self, name=None, default=True):
         """
         If default is set to True, we append DefaultTransitionRule in the
         rules' list
 
         :param default: boolean
         """
-        super(Transition, self).__init__()
+        super(Transition, self).__init__(name=name)
         if default is True:
             self.add_rule(DefaultTransitionRule)
 
