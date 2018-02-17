@@ -7,6 +7,8 @@ from nodes import Transition, Place
 
 class Petrinet(networkx.DiGraph):
     def __init__(self, adjacent_matrix, **attr):
+        # Next transition to fire
+        self.fire_queue = DefaultFireQueue()
         super(Petrinet, self).__init__(**attr)
         if isinstance(adjacent_matrix, dict):
             self.create_from_adj_dict(adjacent_matrix)
@@ -15,8 +17,6 @@ class Petrinet(networkx.DiGraph):
         elif adjacent_matrix is not None:
             raise TypeError("Adjacent matrix can't be of type %s"
                             % type(adjacent_matrix))
-        # Next transition to fire
-        self.fire_queue = DefaultFireQueue()
 
     @staticmethod
     def make_node(node, class_):
@@ -69,10 +69,14 @@ class Petrinet(networkx.DiGraph):
         if isinstance(u_of_edge, Transition) and isinstance(v_of_edge, Place):
             u_of_edge.add_up_place(v_of_edge, flow=flow)
             v_of_edge.add_down_transition(u_of_edge, flow=flow)
+            self.add_node(u_of_edge)
+            self.add_node(v_of_edge)
             return super(Petrinet, self).add_edge(u_of_edge, v_of_edge, **attr)
         if isinstance(u_of_edge, Place) and isinstance(v_of_edge, Transition):
             u_of_edge.add_up_transition(v_of_edge, flow=flow)
             v_of_edge.add_down_place(u_of_edge, flow=flow)
+            self.add_node(u_of_edge)
+            self.add_node(v_of_edge)
             return super(Petrinet, self).add_edge(u_of_edge, v_of_edge, **attr)
         raise TypeError("edge between %s and %s is not possible"
                         % (type(u_of_edge), type(v_of_edge)))

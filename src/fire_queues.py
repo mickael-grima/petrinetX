@@ -1,19 +1,20 @@
 
-class FireQueue(object):
-    def __init__(self):
-        self.queue = []
+class FireQueue(list):
+    def __init__(self, seq=()):
+        super(FireQueue, self).__init__(seq)
 
     def insert_transition(self, transition, index=-1):
-        self.queue.insert(index, transition)
+        if transition not in self:
+            self.insert(index, transition)
 
     def is_empty(self):
-        return len(self.queue) == 0
+        return len(self) == 0
 
     def next(self):
         try:
-            return self.queue.pop(0)
+            return self.pop(0)
         except IndexError as e:
-            return StopIteration(e)
+            raise StopIteration(e)
 
     def optimize(self):
         raise NotImplementedError()
@@ -25,9 +26,9 @@ class DefaultFireQueue(FireQueue):
         No ranking algorithm, just keep the transitions that are fire-able
         """
         index = 0
-        while index < len(self.queue):
-            transition = self.queue[index]
+        while index < len(self):
+            transition = self[index]
             if not transition.is_fireable():
-                del self.queue[index]
+                del self[index]
             else:
                 index += 1

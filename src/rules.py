@@ -56,7 +56,8 @@ class DefaultTransitionRule(TransitionRule):
             place.pop_n_tokens(self.actor.get_place_flow(place))
 
         for place in self.actor.iter_up_places():
-            place.add_tokens(Token())
+            place.add_tokens(
+                *[Token() for _ in range(self.actor.get_place_flow(place))])
 
 
 class DefaultPlaceRule(PlaceRule):
