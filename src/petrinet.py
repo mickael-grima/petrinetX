@@ -23,12 +23,12 @@ class Petrinet(networkx.DiGraph):
         if isinstance(node, Place) or isinstance(node, Transition):
             return node
         if isinstance(node, str) or isinstance(node, unicode):
-            class_(name=node)
+            return class_(name=node)
 
     def create_from_adj_dict(self, adj_dict):
         places, transitions = {}, {}
         for place, trans in adj_dict.iteritems():
-            for transition, flow in adj_dict.iteritems():
+            for transition, flow in trans.iteritems():
                 places.setdefault(place, self.make_node(place, class_=Place))
                 transitions.setdefault(transition, self.make_node(
                     transition, class_=Transition))
@@ -40,13 +40,24 @@ class Petrinet(networkx.DiGraph):
                         transitions[transition], places[place], flow=-flow)
 
     def create_from_adj_matrix(self, adj_matrix):
+        """
+        the rows represent the places
+        the columns the transitions
+        """
+        places, transitions = {}, {}
+        row = 0
         for flows in adj_matrix:
-            place = Place()
+            column = 0
+            places[row] = places.get(row, Place(name=row))
             for flow in flows:
+                transitions[column] = transitions.get(
+                    column, Transition(name=column))
                 if flow > 0:
-                    self.add_edge(place, Transition(), flow=flow)
+                    self.add_edge(places[row], transitions[column], flow=flow)
                 elif flow < 0:
-                    self.add_edge(Transition(), place, flow=-flow)
+                    self.add_edge(transitions[column], places[row], flow=-flow)
+                column += 1
+            row += 1
 
     def add_node(self, node, **attr):
         super(Petrinet, self).add_node(node, **attr)

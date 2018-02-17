@@ -22,7 +22,7 @@ class Rule(object):
     def is_satisfied(self):
         return True
 
-    def make_action(self):
+    def make_action(self, *args, **kwargs):
         pass
 
 
@@ -35,7 +35,6 @@ class PlaceRule(Rule):
 
 
 class DefaultTransitionRule(TransitionRule):
-
     def is_satisfied(self):
         """
         If at least one down place has one token, returns True
@@ -57,4 +56,9 @@ class DefaultTransitionRule(TransitionRule):
             place.pop_n_tokens(self.actor.get_place_flow(place))
 
         for place in self.actor.iter_up_places():
-            place.add_token(Token())
+            place.add_tokens(Token())
+
+
+class DefaultPlaceRule(PlaceRule):
+    def make_action(self, flow=1):
+        pass

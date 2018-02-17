@@ -20,10 +20,10 @@ class TestNodes(unittest.TestCase):
         # Assert that any place has no tokens
         self.assertFalse(place0.has_n_tokens(flow=1))
         self.assertFalse(place1.has_n_tokens(flow=2))
-        place0.add_token(Token())
+        place0.add_tokens(Token())
         self.assertTrue(place0.has_n_tokens(flow=1))
         self.assertFalse(place0.has_n_tokens(flow=2))
-        place0.add_token(Token())
+        place0.add_tokens(Token())
         self.assertTrue(place0.has_n_tokens(flow=1))
         self.assertTrue(place0.has_n_tokens(flow=2))
 
@@ -54,18 +54,18 @@ class TestNodes(unittest.TestCase):
         # No rule so transition is not fire-able
         self.assertFalse(transition.is_fireable())
 
-        place0.add_token(Token())
-        place1.add_token(Token())
+        place0.add_tokens(Token())
+        place1.add_tokens(Token())
 
         # place1 still doesn't have enough tokens
         self.assertFalse(transition.is_fireable())
 
         # add the last missing token
-        place1.add_token(Token())
+        place1.add_tokens(Token())
         self.assertTrue(transition.is_fireable())
 
         # even if some places have too many tokens
-        place0.add_token(Token())
+        place0.add_tokens(Token())
         self.assertTrue(transition.is_fireable())
 
         # fire action

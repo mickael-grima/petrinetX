@@ -29,8 +29,8 @@ class Place(Node):
         self.__up_transitions = {}
         self.__down_transitions = {}
 
-    def add_token(self, token):
-        self.__tokens.add(token)
+    def add_tokens(self, *tokens):
+        self.__tokens.update(tokens)
 
     def remove_token(self, token):
         if self.has_token(token):
