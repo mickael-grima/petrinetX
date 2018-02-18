@@ -32,3 +32,12 @@ class DefaultFireQueue(FireQueue):
                 del self[index]
             else:
                 index += 1
+
+
+class TimeFireQueue(FireQueue):
+    def __init__(self, seq=(), initial_clock=0):
+        super(TimeFireQueue, self).__init__(seq)
+        self.clock = initial_clock
+
+    def optimize(self):
+        pass

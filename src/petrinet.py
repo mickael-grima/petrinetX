@@ -3,9 +3,13 @@ import networkx
 
 from fire_queues import DefaultFireQueue
 from nodes import Transition, Place
+from rules import DefaultPlaceRule, DefaultTransitionRule
 
 
 class Petrinet(networkx.DiGraph):
+    DEFAULT_PLACE_RULE = DefaultPlaceRule
+    DEFAULT_TRANSITION_RULE = DefaultTransitionRule
+
     def __init__(self, adjacent_matrix, **attr):
         # Next transition to fire
         self.fire_queue = DefaultFireQueue()
@@ -60,9 +64,15 @@ class Petrinet(networkx.DiGraph):
             row += 1
 
     def add_node(self, node, **attr):
-        super(Petrinet, self).add_node(node, **attr)
         if isinstance(node, Transition):
+            node.add_rule(self.DEFAULT_TRANSITION_RULE)
             self.fire_queue.insert_transition(node)
+        elif isinstance(node, Place):
+            node.add_rule(self.DEFAULT_PLACE_RULE)
+        else:
+            raise TypeError("node should be of type Place or Transition."
+                            "type=%s found instead" % type(node))
+        super(Petrinet, self).add_node(node, **attr)
 
     def add_edge(self, u_of_edge, v_of_edge, **attr):
         flow = attr.get("flow", 1)

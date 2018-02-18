@@ -22,7 +22,7 @@ class TestPetrinet(unittest.TestCase):
         self.assertEqual(places, nb_places)
         self.assertEqual(transitions, nb_transitions)
 
-    def test_build_from_dict(self):
+    def test_build(self):
         """
         2 fires petrinet
         """
@@ -88,7 +88,7 @@ class TestPetrinet(unittest.TestCase):
         transition = petrinet.fire_queue.next()
         transition.fire()
         self.assertFalse(place0.has_n_tokens(2))
-        self.assertTrue(place1.has_n_tokens(1))
+        self.assertTrue(place0.has_n_tokens(1))
         self.assertTrue(place1.has_n_tokens(1))
         self.assertFalse(place1.has_n_tokens(2))
 

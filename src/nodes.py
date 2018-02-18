@@ -2,7 +2,6 @@
 """
 Contains Transition and Place definitions.
 """
-from rules import DefaultTransitionRule
 
 
 class Node(object):
@@ -19,7 +18,9 @@ class Node(object):
         :param kwargs:
         :return:
         """
-        self.rules.append(rule(self, *args, **kwargs))
+        if rule.__name__ not in map(
+                lambda r: r.__class__.__name__, self.rules):
+            self.rules.append(rule(self, *args, **kwargs))
 
 
 class Place(Node):
@@ -48,6 +49,10 @@ class Place(Node):
             tokens.add(self.__tokens.pop())
         return tokens
 
+    def iter_tokens(self):
+        for token in self.__tokens:
+            yield token
+
     def add_down_transition(self, transition, flow=1):
         self.__down_transitions[transition] = flow
 
@@ -62,7 +67,7 @@ class Place(Node):
 
 
 class Transition(Node):
-    def __init__(self, name=None, default=True):
+    def __init__(self, name=None):
         """
         If default is set to True, we append DefaultTransitionRule in the
         rules' list
@@ -70,8 +75,6 @@ class Transition(Node):
         :param default: boolean
         """
         super(Transition, self).__init__(name=name)
-        if default is True:
-            self.add_rule(DefaultTransitionRule)
 
         self.__down_places = {}
         self.__up_places = {}

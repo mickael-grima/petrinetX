@@ -2,6 +2,7 @@ import unittest
 
 from src.nodes import Transition, Place
 from src.tokens import Token
+from src.rules import DefaultTransitionRule, DefaultPlaceRule
 
 
 class TestNodes(unittest.TestCase):
@@ -50,6 +51,11 @@ class TestNodes(unittest.TestCase):
         transition.add_down_place(place0)
         transition.add_down_place(place1, flow=2)
         transition.add_up_place(place2)
+        # add rules
+        transition.add_rule(DefaultTransitionRule)
+        place0.add_rule(DefaultPlaceRule)
+        place1.add_rule(DefaultPlaceRule)
+        place2.add_rule(DefaultPlaceRule)
 
         # No rule so transition is not fire-able
         self.assertFalse(transition.is_fireable())
