@@ -83,8 +83,9 @@ class TimeTransitionRule(DefaultTransitionRule):
         """
         waiting_time = 0
         for place in self.actor.iter_down_places():
-            for rule in place.rules:
-                value = rule.get_value(self.actor.get_place_flow(place))
+            rule = place.get_rule(TimePlaceRule.__name__)
+            if rule is not None:
+                value = rule.get_value(self.actor.get_place_flow(place) - 1)
                 if value is not None:
                     waiting_time = max(value, waiting_time)
         return waiting_time
@@ -101,11 +102,11 @@ class TimeTransitionRule(DefaultTransitionRule):
         """
         for place in self.actor.iter_down_places():
             for rule in place.rules:
-                rule.make_action(clock, -self.actor.get_place_flow(place))
+                rule.make_action(-self.actor.get_place_flow(place), clock)
 
         for place in self.actor.iter_up_places():
             for rule in place.rules:
-                rule.make_action(clock, self.actor.get_place_flow(place))
+                rule.make_action(self.actor.get_place_flow(place), clock)
 
 
 class TimePlaceRule(PlaceRule):
@@ -122,9 +123,11 @@ class TimePlaceRule(PlaceRule):
         """
         try:
             return sorted(imap(
-                lambda token: self.global_clock - token.clock,
+                lambda token: max(
+                    self.global_clock - getattr(token, "clock", 0),
+                    self.waiting_time),
                 self.actor.iter_tokens()
-            ))[tokens]
+            ), reverse=True)[tokens]
         except IndexError:
             return None
 

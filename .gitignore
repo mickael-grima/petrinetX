@@ -90,3 +90,6 @@ ENV/
 
 # specific folders
 .idea
+
+# tests
+.pytest_cache

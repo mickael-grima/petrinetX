@@ -80,6 +80,7 @@ class TestPetrinet(unittest.TestCase):
         self.assertIn(transition2, petrinet.fire_queue)
 
         # test fire_queue.optimize
+        petrinet.fire_queue.update()
         petrinet.fire_queue.optimize()
         self.assertIn(transition1, petrinet.fire_queue)
         self.assertNotIn(transition2, petrinet.fire_queue)
@@ -93,26 +94,20 @@ class TestPetrinet(unittest.TestCase):
         self.assertFalse(place1.has_n_tokens(2))
 
         # test update fire_queue
-        petrinet.update_fire_queue(transition)
-        self.assertIn(transition1, petrinet.fire_queue)
-        self.assertIn(transition2, petrinet.fire_queue)
-
-        # fire number 2
-        petrinet.fire_queue.optimize()
+        petrinet.fire_queue.update(transition)
         self.assertIn(transition1, petrinet.fire_queue)
         self.assertNotIn(transition2, petrinet.fire_queue)
+        petrinet.fire_queue.optimize()
         transition = petrinet.fire_queue.next()
         transition.fire()
         self.assertFalse(place0.has_n_tokens(1))
         self.assertTrue(place1.has_n_tokens(2))
 
         # fire number 3
-        petrinet.update_fire_queue(transition)
-        self.assertIn(transition1, petrinet.fire_queue)
-        self.assertIn(transition2, petrinet.fire_queue)
-        petrinet.fire_queue.optimize()
+        petrinet.fire_queue.update(transition)
         self.assertIn(transition2, petrinet.fire_queue)
         self.assertNotIn(transition1, petrinet.fire_queue)
+        petrinet.fire_queue.optimize()
         transition = petrinet.fire_queue.next()
         transition.fire()
         self.assertFalse(place0.has_n_tokens(1))
@@ -120,12 +115,10 @@ class TestPetrinet(unittest.TestCase):
         self.assertTrue(place2.has_n_tokens(1))
 
         # no fire anymore
-        petrinet.update_fire_queue(transition)
-        self.assertIn(transition1, petrinet.fire_queue)
-        self.assertIn(transition2, petrinet.fire_queue)
-        petrinet.fire_queue.optimize()
+        petrinet.fire_queue.update(transition)
         self.assertNotIn(transition1, petrinet.fire_queue)
         self.assertNotIn(transition2, petrinet.fire_queue)
+        petrinet.fire_queue.optimize()
         self.assertTrue(petrinet.is_blocked())
 
     def test_simulate_method(self):

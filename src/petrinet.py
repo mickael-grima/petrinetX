@@ -1,9 +1,9 @@
-
 import networkx
 
 from fire_queues import DefaultFireQueue
 from nodes import Transition, Place
-from rules import DefaultPlaceRule, DefaultTransitionRule
+from rules import DefaultPlaceRule, DefaultTransitionRule, TimePlaceRule, \
+    TimeTransitionRule
 
 
 class Petrinet(networkx.DiGraph):
@@ -94,18 +94,18 @@ class Petrinet(networkx.DiGraph):
     def is_blocked(self):
         return self.fire_queue.is_empty()
 
-    def update_fire_queue(self, transition):
-        for place in transition.iter_places():
-            for trans in place.iter_transitions():
-                self.fire_queue.insert_transition(trans)
-
     def next(self):
-        transition = self.fire_queue.next()
-        transition.fire()
-        self.update_fire_queue(transition)
+        transition = self.fire_queue.pop_and_fire()
+        self.fire_queue.update(transition)
         self.fire_queue.optimize()
 
     def simulate(self):
+        self.fire_queue.update()
         self.fire_queue.optimize()
         while not self.is_blocked():
             self.next()
+
+
+class TimePetrinet(Petrinet):
+    DEFAULT_PLACE_RULE = TimePlaceRule
+    DEFAULT_TRANSITION_RULE = TimeTransitionRule

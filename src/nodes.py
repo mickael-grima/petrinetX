@@ -22,6 +22,11 @@ class Node(object):
                 lambda r: r.__class__.__name__, self.rules):
             self.rules.append(rule(self, *args, **kwargs))
 
+    def get_rule(self, rule_name):
+        for rule in self.rules:
+            if rule.__class__.__name__ == rule_name:
+                return rule
+
 
 class Place(Node):
     def __init__(self, name=None):
@@ -106,9 +111,9 @@ class Transition(Node):
         for place in self.iter_up_places():
             yield place
 
-    def fire(self):
+    def fire(self, *args, **kwargs):
         for rule in self.rules:
-            rule.make_action()
+            rule.make_action(*args, **kwargs)
 
     def is_fireable(self):
         """

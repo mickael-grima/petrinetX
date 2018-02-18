@@ -1,4 +1,9 @@
 
+import sys
+
+from rules import TimeTransitionRule, TimePlaceRule
+
+
 class FireQueue(list):
     def __init__(self, seq=()):
         super(FireQueue, self).__init__(seq)
@@ -17,14 +22,27 @@ class FireQueue(list):
             raise StopIteration(e)
 
     def optimize(self):
+        pass
+
+    def update(self, *args, **kwargs):
+        raise NotImplementedError()
+
+    def pop_and_fire(self):
         raise NotImplementedError()
 
 
 class DefaultFireQueue(FireQueue):
-    def optimize(self):
+    def update(self, *args, **kwargs):
         """
-        No ranking algorithm, just keep the transitions that are fire-able
+        args=list of transitions.
+        Add new fireable transitions and remove the old non-fireable transitions
         """
+        for transition in args:
+            for place in transition.iter_places():
+                for trans in place.iter_transitions():
+                    if trans.is_fireable():
+                        self.insert_transition(trans)
+
         index = 0
         while index < len(self):
             transition = self[index]
@@ -33,11 +51,71 @@ class DefaultFireQueue(FireQueue):
             else:
                 index += 1
 
+    def pop_and_fire(self):
+        transition = self.next()
+        transition.fire()
+        return transition
+
 
 class TimeFireQueue(FireQueue):
     def __init__(self, seq=(), initial_clock=0):
         super(TimeFireQueue, self).__init__(seq)
         self.clock = initial_clock
+        self.optimal_value = None
 
     def optimize(self):
-        pass
+        """
+        for each transition get its value,
+        and place the minimum value on top of the queue
+        """
+        values = {}
+        index = 0
+        while index < len(self):
+            transition = self.pop(index)
+
+            # Get value and insert transition on the right place
+            transition_rule = transition.get_rule(TimeTransitionRule.__name__)
+            if transition_rule is not None:
+                value = transition_rule.get_value(self.clock)
+                values[transition] = value
+                i = 0
+                while i < index:
+                    if value <= values.get(self[i], sys.maxint):
+                        break
+                    i += 1
+            else:
+                i = index
+            self.insert_transition(transition, i)
+
+            index += 1
+        self.optimal_value = values.get(self[0], 0) if self else 0
+        self.clock += self.optimal_value
+
+    def update(self, *args, **kwargs):
+        """
+        add transitions around every involved place to this FireQueue.
+        Furthermore, every places should have their clock updated.
+        """
+        # add new transitions
+        for transition in args:
+            for place in transition.iter_places():
+                for trans in place.iter_transitions():
+                    if trans.is_fireable():
+                        self.insert_transition(trans)
+
+        # remove old transitions and set new global clock to every places
+        index = 0
+        while index < len(self):
+            transition = self[index]
+            if not transition.is_fireable():
+                del self[index]
+            else:
+                for place in transition.iter_down_places():
+                    place_rule = place.get_rule(TimePlaceRule.__name__)
+                    place_rule.make_action(0, self.clock)
+                index += 1
+
+    def pop_and_fire(self):
+        transition = self.next()
+        transition.fire(self.clock)
+        return transition
