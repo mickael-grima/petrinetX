@@ -6,22 +6,6 @@ from src.tokens import Token
 
 
 class TestPetrinet(unittest.TestCase):
-    def assert_structure(self, petrinet, nb_places=0, nb_transitions=0,
-                         nb_edges=0):
-        self.assertEqual(petrinet.number_of_nodes(), nb_transitions + nb_places)
-        self.assertEqual(petrinet.number_of_edges(), nb_edges)
-
-        places, transitions = 0, 0
-        for node in petrinet.nodes():
-            if isinstance(node, Place):
-                places += 1
-            elif isinstance(node, Transition):
-                transitions += 1
-            else:
-                raise TypeError("node of type %s found" % type(node))
-        self.assertEqual(places, nb_places)
-        self.assertEqual(transitions, nb_transitions)
-
     def test_build(self):
         """
         2 fires petrinet
@@ -30,9 +14,11 @@ class TestPetrinet(unittest.TestCase):
         transition1, transition2 = Transition(), Transition()
         place0, place1, place2 = Place(), Place(), Place()
         adj_matrix = {
-            place0: {transition1: 1},
-            place1: {transition1: -1, transition2: 2},
-            place2: {transition2: -1}
+            "graph": {
+                place0: {transition1: 1},
+                place1: {transition1: -1, transition2: 2},
+                place2: {transition2: -1}
+            }
         }
 
         petrinet = Petrinet(adj_matrix)
@@ -48,30 +34,17 @@ class TestPetrinet(unittest.TestCase):
         self.assertTrue(petrinet.has_edge(place1, transition2))
         self.assertTrue(petrinet.has_edge(transition2, place2))
         self.assertFalse(petrinet.has_edge(transition1, place0))
-        self.assert_structure(petrinet, 3, 2, 4)
-
-        # Dict containing names
-        adj_matrix = {
-            "place0": {"transition1": 1},
-            place1: {"transition1": -1, transition2: 2},
-            "place2": {transition2: -1}
-        }
-        petrinet = Petrinet(adj_matrix)
-        self.assert_structure(petrinet, 3, 2, 4)
-
-        # Matrix
-        adj_matrix = [[1, 0], [-1, 1], [0, -1]]
-        petrinet = Petrinet(adj_matrix)
-        self.assert_structure(petrinet, 3, 2, 4)
 
     def test_flow_step_by_step(self):
         transition1, transition2 = Transition(), Transition()
         place0, place1, place2 = Place(), Place(), Place()
         place0.add_tokens(Token(), Token())
         adj_matrix = {
-            place0: {transition1: 1},
-            place1: {transition1: -1, transition2: 2},
-            place2: {transition2: -1}
+            "graph": {
+                place0: {transition1: 1},
+                place1: {transition1: -1, transition2: 2},
+                place2: {transition2: -1}
+            }
         }
 
         # test fire_queue
@@ -126,9 +99,11 @@ class TestPetrinet(unittest.TestCase):
         place0, place1, place2 = Place(), Place(), Place()
         place0.add_tokens(Token(), Token())
         adj_matrix = {
-            place0: {transition1: 1},
-            place1: {transition1: -1, transition2: 2},
-            place2: {transition2: -1}
+            "graph": {
+                place0: {transition1: 1},
+                place1: {transition1: -1, transition2: 2},
+                place2: {transition2: -1}
+            }
         }
 
         petrinet = Petrinet(adj_matrix)

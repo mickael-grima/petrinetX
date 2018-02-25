@@ -2,6 +2,7 @@
 """
 Contains Transition and Place definitions.
 """
+from rules import PlaceRule, TransitionRule
 
 
 class Node(object):
@@ -18,6 +19,13 @@ class Node(object):
         :param kwargs:
         :return:
         """
+        if issubclass(self.__class__, Place) and not issubclass(
+                rule, PlaceRule):
+            return
+        if issubclass(self.__class__, Transition) and not issubclass(
+                rule, TransitionRule):
+            return
+
         if rule.__name__ not in map(
                 lambda r: r.__class__.__name__, self.rules):
             self.rules.append(rule(self, *args, **kwargs))

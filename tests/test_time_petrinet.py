@@ -4,6 +4,7 @@ from src.nodes import Transition, Place
 from src.tokens import Token
 from src.rules import TimeTransitionRule, TimePlaceRule
 from src.fire_queues import TimeFireQueue
+from src.petrinet import TimePetrinet
 
 
 class TimePetrinetTest(unittest.TestCase):
@@ -121,7 +122,63 @@ class TimePetrinetTest(unittest.TestCase):
         self.assertNotIn(transition0, fire_queue)
 
     def test_time_petrinet(self):
-        pass
+        adj_matrix = dict(
+            places=dict(
+                place0=dict(
+                    tokens=1,
+                    rules=dict(
+                        default=dict(
+                            waiting_time=2,
+                            global_clock=0
+                        )
+                    )
+                ),
+                place1=dict(
+                    tokens=2,
+                    rules=dict(
+                        default=dict(
+                            waiting_time=1,
+                            global_clock=0
+                        )
+                    )
+                ),
+                place2=dict(
+                    rules=dict(
+                        default=dict(
+                            waiting_time=3,
+                            global_clock=0
+                        )
+                    )
+                ),
+                place3=dict(
+                    rules=dict(
+                        default=dict(
+                            waiting_time=2,
+                            global_clock=0
+                        )
+                    )
+                ),
+            ),
+            graph=dict(
+                place0=dict(
+                    transition0=1
+                ),
+                place1=dict(
+                    transition0=2
+                ),
+                place2=dict(
+                    transition0=-1,
+                    transition1=1
+                ),
+                place3=dict(
+                    transition1=-1
+                )
+            )
+        )
+        petrinet = TimePetrinet(adj_matrix)
+
+        petrinet.simulate()
+        self.assertEqual(petrinet.fire_queue.clock, 5)
 
 
 if __name__ == "__main__":
