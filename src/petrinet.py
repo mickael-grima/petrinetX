@@ -2,9 +2,7 @@ import networkx
 
 from fire_queues import DefaultFireQueue, TimeFireQueue
 from nodes import Transition, Place
-from tokens import Token
-from rules import DefaultPlaceRule, DefaultTransitionRule, TimePlaceRule, \
-    TimeTransitionRule
+from rules import *
 
 
 class Petrinet(networkx.DiGraph):
@@ -24,8 +22,42 @@ class Petrinet(networkx.DiGraph):
             raise TypeError("Adjacent matrix can't be of type %s"
                             % type(adjacent_matrix))
 
-    @classmethod
-    def add_rules_to_node(cls, node, rules):
+    def make_rule_arg(self, arg):
+        """
+        If arg is a string and starts with `<class>::` for any existing class,
+        then we create an object of this class. Otherwise we return arg.
+
+        2 special cases:
+          if the given class name is Transition or Place, the first given
+          argument is its name, and we try to retrieve the corresponding
+          transition or place from the nodes first.
+
+        arg structure:
+           <class>::<obj's name>
+
+        :param arg: object
+        :return:
+        """
+        if isinstance(arg, str) or isinstance(arg, unicode):
+            try:
+                class_name, obj_name = arg.split("::")
+                if class_name == Place.__name__:
+                    try:
+                        return self.iter_places_by_name(obj_name).next()
+                    except StopIteration:
+                        return Place(name=obj_name)
+                elif class_name == Transition.__name__:
+                    try:
+                        return self.iter_transitions_by_name(obj_name).next()
+                    except StopIteration:
+                        return Transition(name=obj_name)
+                else:
+                    return obj_name
+            except:
+                pass
+        return arg
+
+    def add_rules_to_node(self, node, rules):
         """
         add given rules to node.
         if rule_name is default, then add default rule.
@@ -35,23 +67,33 @@ class Petrinet(networkx.DiGraph):
         :return:
         """
         for rule_name, rule_data in (rules or {}).iteritems():
+            args = map(
+                self.make_rule_arg,
+                rule_data.pop("args") if "args" in rule_data else ()
+            )
+            rule_data = {
+                key: self.make_rule_arg(value)
+                for key, value in rule_data.iteritems()
+            }
             if rule_name == 'default':
                 if isinstance(node, Transition):
-                    node.add_rule(cls.DEFAULT_TRANSITION_RULE, **rule_data)
+                    node.remove_rule(self.DEFAULT_TRANSITION_RULE.__name__)
+                    node.add_rule(
+                        self.DEFAULT_TRANSITION_RULE, *args, **rule_data)
                 elif isinstance(node, Place):
-                    node.add_rule(cls.DEFAULT_PLACE_RULE, **rule_data)
+                    node.remove_rule(self.DEFAULT_PLACE_RULE.__name__)
+                    node.add_rule(
+                        self.DEFAULT_PLACE_RULE, *args, **rule_data)
             else:
-                node.add_rule(globals().get(rule_name), **rule_data)
+                node.remove_rule(rule_name)
+                node.add_rule(globals().get(rule_name), *args, **rule_data)
 
     @classmethod
-    def make_node(cls, node, class_, attr=None, rules=None):
+    def make_node(cls, node, class_, attr=None):
         if isinstance(node, Place) or isinstance(node, Transition):
-            cls.add_rules_to_node(node, rules)
             return node
         if isinstance(node, str) or isinstance(node, unicode):
-            node_ = class_(name=node, **(attr or {}))
-            cls.add_rules_to_node(node_, rules)
-            return node_
+            return class_(name=node, **(attr or {}))
 
     def create_from_adj_dict(self, adj_dict):
         """
@@ -61,7 +103,10 @@ class Petrinet(networkx.DiGraph):
                 place: {
                     attr: <arguments for place object>,
                     rules: {
-                        <rule's name>: {attribute's name: attribute's value}
+                        <rule's name>: {
+                            args=(),
+                            attribute's name: attribute's value
+                        }
                     },
                     tokens: <nb of tokens>
                 },
@@ -71,7 +116,10 @@ class Petrinet(networkx.DiGraph):
                 transition: {
                     attr: <arguments for place object>,
                     rules: {
-                        <rule's name>: {attribute's name: attribute's value}
+                        <rule's name>: {
+                            args=(),
+                            attribute's name: attribute's value
+                        }
                     }
                 },
                 ...
@@ -90,22 +138,21 @@ class Petrinet(networkx.DiGraph):
         :return:
         """
         places, transitions = {}, {}
+        place_rules, transition_rules = {}, {}
 
         # first create places
         for place, data in adj_dict.get("places", {}).iteritems():
             places.setdefault(place, self.make_node(
-                place, Place,
-                attr=data.get("attr", {}),
-                rules=data.get("rules", {})))
+                place, Place, attr=data.get("attr", {})))
             places[place].add_tokens(
                 *[Token() for _ in range(data.get("tokens", 0))])
+            place_rules[place] = data.get("rules")
 
         # first create transitions
         for transition, data in adj_dict.get("transitions", {}).iteritems():
             transitions.setdefault(transition, self.make_node(
-                transition, Transition,
-                attr=data.get("attr", {}),
-                rules=data.get("rules", {})))
+                transition, Transition, attr=data.get("attr", {})))
+            transition_rules[transition] = data.get("rules")
 
         # create the corresponding graph
         for place, trans in adj_dict["graph"].iteritems():
@@ -119,6 +166,12 @@ class Petrinet(networkx.DiGraph):
                 elif flow < 0:
                     self.add_edge(
                         transitions[transition], places[place], flow=-flow)
+
+        # Add rules
+        for place, prules in place_rules.iteritems():
+            self.add_rules_to_node(places[place], prules)
+        for transition, trules in transition_rules.iteritems():
+            self.add_rules_to_node(transitions[transition], trules)
 
     def create_from_adj_matrix(self, adj_matrix):
         """
@@ -173,8 +226,16 @@ class Petrinet(networkx.DiGraph):
             if isinstance(node, Place) and node.name == place_name:
                 yield node
 
+    def iter_token_places(self):
+        """
+        iterate places which contain tokens
+        """
+        for node in self.nodes.iterkeys():
+            if isinstance(node, Place) and node.has_n_tokens():
+                yield node
+
     def iter_transitions_by_name(self, transition_name):
-        for node in self.nodes.itervalues():
+        for node in self.nodes.iterkeys():
             if isinstance(node, Transition) and node.name == transition_name:
                 yield node
 

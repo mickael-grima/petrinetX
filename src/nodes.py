@@ -35,6 +35,16 @@ class Node(object):
             if rule.__class__.__name__ == rule_name:
                 return rule
 
+    def remove_rule(self, rule_name):
+        i = 0
+        for rule in self.rules:
+            if rule_name == rule.__class__.__name__:
+                break
+            i += 1
+
+        if i < len(self.rules):
+            del self.rules[i]
+
 
 class Place(Node):
     def __init__(self, name=None):
@@ -85,7 +95,7 @@ class Transition(Node):
         If default is set to True, we append DefaultTransitionRule in the
         rules' list
 
-        :param default: boolean
+        :param name: string
         """
         super(Transition, self).__init__(name=name)
 

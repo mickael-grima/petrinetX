@@ -20,22 +20,24 @@ class Rule(object):
         self.actor = actor
         pass
 
-    def get_value(self, *args, **kwargs):
-        return None
-
-    def is_satisfied(self, *args, **kwargs):
-        return True
-
-    def make_action(self, *args, **kwargs):
-        pass
-
 
 class TransitionRule(Rule):
-    pass
+    def get_value(self, *args, **kwargs):
+        return 0
+
+    def is_satisfied(self, *args, **kwargs):
+        raise NotImplementedError()
+
+    def make_action(self, *args, **kwargs):
+        raise NotImplementedError()
 
 
 class PlaceRule(Rule):
-    pass
+    def get_value(self, *args, **kwargs):
+        return 0
+
+    def make_action(self, *args, **kwargs):
+        raise NotImplementedError()
 
 
 class DefaultTransitionRule(TransitionRule):
@@ -153,3 +155,52 @@ class TimePlaceRule(PlaceRule):
         # Add new tokens if needed
         if tokens > 0:
             self.actor.add_tokens(*[Token(clock=clock) for _ in range(tokens)])
+
+
+class BlockedFireRule(TransitionRule):
+    def __init__(self, actor):
+        super(BlockedFireRule, self).__init__(actor)
+        self.blockers = set()
+
+    def is_satisfied(self, *args, **kwargs):
+        return not self.blockers
+
+    def make_action(self, blocker=None, block=True, **kwargs):
+        if blocker is not None:
+            if block is True:
+                self.blockers.add(blocker)
+            elif blocker in self.blockers:
+                self.blockers.remove(blocker)
+
+
+class InheritanceRule(TransitionRule):
+    """
+    If the actor transition fires, it allows every targeted transitions to fire
+    """
+    def __init__(self, actor, block, *targets):
+        super(InheritanceRule, self).__init__(actor)
+        self.targets = set(targets)
+        self.block = block
+        for target in targets:
+            target.add_rule(BlockedFireRule)
+            rule = target.get_rule(BlockedFireRule.__name__)
+            rule.make_action(self, block=self.block)
+
+    def is_satisfied(self, *args, **kwargs):
+        return True
+
+    def make_action(self, *args, **kwargs):
+        while self.targets:
+            target = self.targets.pop()
+            rule = target.get_rule(BlockedFireRule.__name__)
+            rule.make_action(self, block=not self.block)
+
+
+class FireInheritanceRule(InheritanceRule):
+    def __init__(self, actor, *targets):
+        super(FireInheritanceRule, self).__init__(actor, True, *targets)
+
+
+class BlockingInheritanceRule(InheritanceRule):
+    def __init__(self, actor, *targets):
+        super(BlockingInheritanceRule, self).__init__(actor, False, *targets)
