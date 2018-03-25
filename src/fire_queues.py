@@ -5,6 +5,12 @@ from rules import TimeTransitionRule, TimePlaceRule
 
 
 class FireQueue(list):
+    """
+    A FireQueue inherits from a list and contains transitions.
+    If it is updated (sse :func:`update`), only transitions that are fire-able
+    should be contained in this list.
+    The first transition in this list is the next one to be fired.
+    """
     def __init__(self, seq=()):
         super(FireQueue, self).__init__(seq)
 
@@ -22,22 +28,37 @@ class FireQueue(list):
             raise StopIteration(e)
 
     def optimize(self):
+        """
+        Sort the transitions' list to have the "most fire-able" on first
+        position
+        """
         pass
 
     def update(self, *args, **kwargs):
+        """
+        Filter out the transition that are not fire-able
+        """
         raise NotImplementedError()
 
     def pop_and_fire(self):
-        raise NotImplementedError()
+        """
+        Pop the first transition of the list and make it fire.
+
+        :return: transition
+        """
+        transition = self.next()
+        transition.fire()
+        return transition
 
 
 class DefaultFireQueue(FireQueue):
-    def update(self, *args, **kwargs):
+    def update(self, *transitions, **kwargs):
         """
-        args=list of transitions.
-        Add new fireable transitions and remove the old non-fireable transitions
+        transitions=list of transitions.
+        Add new fire-able transitions and remove the old non-fire-able
+        transitions
         """
-        for transition in args:
+        for transition in transitions:
             for place in transition.iter_places():
                 for trans in place.iter_transitions():
                     if trans.is_fireable():
@@ -50,11 +71,6 @@ class DefaultFireQueue(FireQueue):
                 del self[index]
             else:
                 index += 1
-
-    def pop_and_fire(self):
-        transition = self.next()
-        transition.fire()
-        return transition
 
 
 class TimeFireQueue(FireQueue):

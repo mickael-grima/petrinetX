@@ -6,6 +6,15 @@ from rules import *
 
 
 class Petrinet(networkx.DiGraph):
+    """
+    Represent a Petri-Net. Inherits from :class:`networkx.DiGraph`.
+    Nodes are places and transitions.
+
+    A Petrinet has a `fire_queue` attribute that inherits from
+    :class:`FireQueue`.
+
+    A Petrinet is initialized by an `adjacent_matrix`,
+    """
     DEFAULT_PLACE_RULE = DefaultPlaceRule
     DEFAULT_TRANSITION_RULE = DefaultTransitionRule
     DEFAULT_FIRE_QUEUE = DefaultFireQueue
@@ -88,8 +97,8 @@ class Petrinet(networkx.DiGraph):
                 node.remove_rule(rule_name)
                 node.add_rule(globals().get(rule_name), *args, **rule_data)
 
-    @classmethod
-    def make_node(cls, node, class_, attr=None):
+    @staticmethod
+    def make_node(node, class_, attr=None):
         if isinstance(node, Place) or isinstance(node, Transition):
             return node
         if isinstance(node, str) or isinstance(node, unicode):
